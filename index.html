@@ -122,6 +122,8 @@
     padding: 4px;
   }
   button.small:hover { color: #b3543f; }
+  button.small.edit { color: #a1937f; }
+  button.small.edit:hover { color: var(--accent-dark); }
   button.ghost {
     background: transparent;
     border: 1px solid #ddd3c4;
@@ -175,6 +177,9 @@
   .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .filter-bar input { flex: 1; min-width: 140px; font-size: 13px; padding: 7px 11px; }
   .filter-bar select { font-size: 13px; padding: 7px 11px; }
+  .notify-label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .notify-label input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .mute-mark { font-size: 12px; }
 
   /* Pomodoro */
   .pomo-card { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
@@ -215,26 +220,24 @@
   .cal-cell.other { opacity: 0.35; }
   .cal-cell.today { border: 2px solid var(--accent); background: #fdfaf4; }
   .cal-cell .daynum { font-weight: 700; font-size: 12px; }
-  .cal-event {
-    background: #f1e9db;
-    color: #6f5a3a;
-    border-radius: 5px;
-    padding: 1px 5px;
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 10.5px;
-    font-weight: 500;
-  }
   .cal-task-dot { color: #96702a; font-size: 10.5px; margin-top: 2px; }
   .ev-dots { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; }
   .ev-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-  .ev-dot.rec { background: #c3a678; }
+  .ev-dot.rec { opacity: .55; }
+  .ev-dot.inline { display: inline-block; margin-right: 7px; vertical-align: middle; }
   .diary-cal-cell { min-height: 56px; text-align: center; }
   .diary-cal-cell .mood-big { font-size: 23px; margin-top: 2px; }
   .diary-cal-cell.has-entry { background: #fdfaf3; }
   .diary-cal-cell.selected { border: 2px solid var(--accent-dark); }
+  .color-swatches { display: flex; gap: 7px; align-items: center; }
+  .color-sw {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .color-sw.sel { border-color: var(--ink); box-shadow: 0 0 0 2px #fff inset; }
 
   /* Progress */
   .proj-item { margin-bottom: 16px; }
@@ -334,6 +337,8 @@
   .stat { font-size: 30px; font-weight: 700; color: var(--ink); }
   .stat-label { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
   .event-date-head { font-size: 11px; font-weight: 700; color: var(--accent-dark); margin-top: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .tappable .task-item { cursor: pointer; }
+  .tappable .task-item:hover { background: #faf6ef; }
 
   .empty { color: #c5b8a5; font-size: 13px; padding: 14px 0; text-align: center; }
 
@@ -365,7 +370,7 @@
     box-shadow: 0 16px 50px rgba(40, 30, 15, .3);
   }
   .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
-  .modal .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .modal .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
   .modal .row input[type="text"] { flex: 1; }
   .modal-events { margin-bottom: 12px; }
   .modal-event-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -453,11 +458,11 @@
     </div>
     <div class="card">
       <h2 data-i18n="upcoming"></h2>
-      <div id="dash-tasks"></div>
+      <div id="dash-tasks" class="tappable" onclick="dashJump(event)"></div>
     </div>
     <div class="card">
       <h2 data-i18n="recent_done"></h2>
-      <div id="dash-done"></div>
+      <div id="dash-done" class="tappable" onclick="dashJump(event)"></div>
     </div>
     <div class="card settings-card">
       <div class="settings-row">
@@ -469,28 +474,12 @@
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
       </div>
       <div class="settings-row" id="notif-offsets" style="margin-top:10px;"></div>
+      <div class="settings-row" id="sound-chips" style="margin-top:8px;"></div>
     </div>
   </section>
 
   <!-- Tasks -->
   <section id="view-tasks" class="view">
-    <div class="card pomo-card">
-      <div>
-        <div class="pomo-mode" id="pomo-mode"></div>
-        <div class="pomo-time" id="pomo-time">25:00</div>
-      </div>
-      <div class="pomo-btns">
-        <button class="primary" id="pomo-toggle" onclick="pomoToggle()"></button>
-        <button class="ghost" onclick="pomoReset()" data-i18n="reset"></button>
-      </div>
-      <span class="time-range">
-        <input type="number" id="pomo-work-min" min="1" max="180" style="width:56px;" onchange="setPomoCfg()">
-        <span>/</span>
-        <input type="number" id="pomo-break-min" min="1" max="60" style="width:50px;" onchange="setPomoCfg()">
-        <span data-i18n="pomo_min"></span>
-      </span>
-      <div class="pomo-count" id="pomo-count"></div>
-    </div>
     <div class="card">
       <h2 data-i18n="add_task"></h2>
       <div class="task-form">
@@ -507,7 +496,9 @@
           <option value="high" data-i18n="priority_high"></option>
           <option value="low" data-i18n="priority_low"></option>
         </select>
-        <button class="primary" onclick="addTask()" data-i18n="add"></button>
+        <label class="notify-label"><input type="checkbox" id="task-notify" checked><span data-i18n="notify_this"></span></label>
+        <button class="primary" id="btn-task-add" onclick="addTask()"></button>
+        <button class="ghost" id="btn-task-cancel" onclick="cancelTaskEdit()" style="display:none;"></button>
       </div>
     </div>
     <div class="card">
@@ -550,6 +541,23 @@
 
   <!-- Habits -->
   <section id="view-habits" class="view">
+    <div class="card pomo-card">
+      <div>
+        <div class="pomo-mode" id="pomo-mode"></div>
+        <div class="pomo-time" id="pomo-time">25:00</div>
+      </div>
+      <div class="pomo-btns">
+        <button class="primary" id="pomo-toggle" onclick="pomoToggle()"></button>
+        <button class="ghost" onclick="pomoReset()" data-i18n="reset"></button>
+      </div>
+      <span class="time-range">
+        <input type="number" id="pomo-work-min" min="1" max="180" style="width:56px;" onchange="setPomoCfg()">
+        <span>/</span>
+        <input type="number" id="pomo-break-min" min="1" max="60" style="width:50px;" onchange="setPomoCfg()">
+        <span data-i18n="pomo_min"></span>
+      </span>
+      <div class="pomo-count" id="pomo-count"></div>
+    </div>
     <div class="card">
       <h2 data-i18n="add_habit"></h2>
       <div class="task-form">
@@ -605,11 +613,14 @@
         <span>–</span>
         <input type="time" id="event-time-end">
       </span>
+      <span class="color-swatches" id="event-colors"></span>
     </div>
-    <div class="row">
+    <div class="row" id="row-repeat">
       <label class="repeat-label"><input type="checkbox" id="event-repeat"><span data-i18n="repeat_weekly"></span></label>
+      <label class="repeat-label"><input type="checkbox" id="event-notify" checked><span data-i18n="notify_this"></span></label>
     </div>
-    <button class="primary" onclick="addEvent()" data-i18n="add_event"></button>
+    <button class="primary" id="btn-event-add" onclick="addEvent()"></button>
+    <button class="ghost" id="btn-event-cancel" onclick="cancelEventEdit()" style="display:none;"></button>
     <div class="modal-close"><button class="small" onclick="closeModal()" data-i18n="close"></button></div>
   </div>
 </div>
@@ -643,15 +654,16 @@ const I18N = {
     empty_events_week: 'No events this week', empty_events_later: 'No later events',
     empty_open: 'No open tasks 🎉', empty_done: 'Nothing completed yet', empty_due: 'No tasks with due dates',
     empty_goals: 'No goals yet', no_events_day: 'No events',
-    undo: 'Undo', edit: 'Edit', today_label: 'TODAY', done_suffix: '(done)',
+    undo: 'Undo', edit: 'Edit', done_suffix: '(done)', cancel: 'Cancel',
     lv: ['MAIN', 'MID', 'SUB'], add_lv: ['+ Mid goal', '+ Sub goal'], goal_name_ph: 'Goal name',
     event_ph: 'New event', add_event: 'Add Event', close: 'Close', settings: 'Settings',
-    repeat_weekly: 'Repeat every week',
+    repeat_weekly: 'Repeat weekly', notify_this: '🔔 Notify',
     export: '⬇ Backup', import: '⬆ Restore', import_done: 'Data restored!', import_err: 'Could not read that file',
     start: 'Start', pause: 'Pause', reset: 'Reset', focus: 'Focus', brk: 'Break',
     pomo_count: n => `🍅 ${n} today`,
     notif_off: '🔔 Reminders: off', notif_on: '🔔 Reminders: on', notif_blocked: '🔕 Notifications blocked',
     notify_when: 'Notify:', off_0: 'At time', off_5: '5 min before', off_15: '15 min before', off_30: '30 min before', off_60: '1 hr before', off_1440: '1 day before',
+    sound_label: 'Sound:', snd_beep: 'Beep', snd_chime: 'Chime', snd_bell: 'Bell',
     pomo_min: 'min',
     deleted: s => `Deleted "${s}"`,
     no_entry: d => `No entry for ${d}. Write one above!`,
@@ -683,15 +695,16 @@ const I18N = {
     empty_events_week: '1週間以内の予定はありません', empty_events_later: 'それ以降の予定はありません',
     empty_open: '未完了のタスクはありません 🎉', empty_done: '完了したタスクはまだありません', empty_due: '期限付きタスクはありません',
     empty_goals: '目標はまだありません', no_events_day: '予定はありません',
-    undo: '元に戻す', edit: '編集', today_label: 'TODAY', done_suffix: '(完了)',
+    undo: '元に戻す', edit: '編集', done_suffix: '(完了)', cancel: 'キャンセル',
     lv: ['大', '中', '小'], add_lv: ['＋中目標', '＋小目標'], goal_name_ph: '目標名',
     event_ph: '予定を入力', add_event: '予定を追加', close: '閉じる', settings: '設定',
-    repeat_weekly: '毎週繰り返す',
+    repeat_weekly: '毎週繰り返す', notify_this: '🔔 通知する',
     export: '⬇ バックアップ', import: '⬆ 復元', import_done: 'データを復元しました!', import_err: 'ファイルを読み込めませんでした',
     start: 'スタート', pause: '一時停止', reset: 'リセット', focus: '集中', brk: '休憩',
     pomo_count: n => `🍅 今日 ${n} 回`,
     notif_off: '🔔 通知: オフ', notif_on: '🔔 通知: オン', notif_blocked: '🔕 通知がブロックされています',
     notify_when: '通知タイミング:', off_0: '定刻', off_5: '5分前', off_15: '15分前', off_30: '30分前', off_60: '1時間前', off_1440: '前日',
+    sound_label: '通知音:', snd_beep: 'ビープ', snd_chime: 'チャイム', snd_bell: 'ベル',
     pomo_min: '分',
     deleted: s => `「${s}」を削除しました`,
     no_entry: d => `${d}の記録はありません。上のフォームから書けます`,
@@ -709,10 +722,15 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.getElementById('btn-lang').textContent = lang === 'en' ? '🌐 日本語' : '🌐 English';
+  document.getElementById('btn-task-add').textContent = editingTaskId ? t('save') : t('add');
+  document.getElementById('btn-task-cancel').textContent = t('cancel');
+  document.getElementById('btn-event-add').textContent = editingEventId ? t('save') : t('add_event');
+  document.getElementById('btn-event-cancel').textContent = t('cancel');
   document.documentElement.lang = lang;
   updateNotifBtn();
   updatePomoUI();
   renderOffsetChips();
+  renderSoundChips();
 }
 function toggleLang() {
   lang = lang === 'en' ? 'ja' : 'en';
@@ -730,9 +748,9 @@ const store = {
   save(key, val) { localStorage.setItem('planner_' + key, JSON.stringify(val)); }
 };
 
-let tasks = store.load('tasks', []);         // {id,title,tag,due,time,timeEnd,pri,done,doneAt}
-let events = store.load('events', []);       // {id,date,time,timeEnd,title}
-let recurring = store.load('recurring', []); // {id,dow,time,timeEnd,title,from}
+let tasks = store.load('tasks', []);         // {id,title,tag,due,time,timeEnd,pri,notify,done,doneAt}
+let events = store.load('events', []);       // {id,date,time,timeEnd,title,color,notify}
+let recurring = store.load('recurring', []); // {id,dow,time,timeEnd,title,color,notify,from}
 let projects = store.load('projects', []);   // nested {id,name,pct,children}
 let diary = store.load('diary', []);         // {date,mood,text}
 let habits = store.load('habits', []);       // {id,name,dates:[],remind}
@@ -785,35 +803,69 @@ function importData(input) {
 }
 
 // ---------- Navigation ----------
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-' + btn.dataset.view).classList.add('active');
-    renderAll();
-  };
-});
+function showView(v) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  renderAll();
+}
+document.querySelectorAll('nav button').forEach(btn => { btn.onclick = () => showView(btn.dataset.view); });
+function dashJump(ev) {
+  if (ev.target.closest('button') || ev.target.closest('input')) return;
+  if (ev.target.closest('.task-item')) showView('tasks');
+}
 
 // ---------- Tasks ----------
+let editingTaskId = null;
 function addTask() {
   const title = document.getElementById('task-title').value.trim();
   if (!title) return;
-  tasks.push({
-    id: uid(), title,
+  const fields = {
+    title,
     tag: document.getElementById('task-tag').value.trim(),
     due: document.getElementById('task-due').value,
     time: document.getElementById('task-time').value,
     timeEnd: document.getElementById('task-time-end').value,
     pri: document.getElementById('task-pri').value,
-    done: false, doneAt: null
-  });
-  document.getElementById('task-title').value = '';
-  document.getElementById('task-tag').value = '';
-  document.getElementById('task-time').value = '';
-  document.getElementById('task-time-end').value = '';
+    notify: document.getElementById('task-notify').checked
+  };
+  if (editingTaskId) {
+    const tk = tasks.find(t => t.id === editingTaskId);
+    if (tk) Object.assign(tk, fields);
+  } else {
+    tasks.push({ id: uid(), ...fields, done: false, doneAt: null });
+  }
+  cancelTaskEdit();
   store.save('tasks', tasks);
   renderAll();
+}
+function editTask(id) {
+  const tk = tasks.find(t => t.id === id);
+  if (!tk) return;
+  showView('tasks');
+  document.getElementById('task-title').value = tk.title;
+  document.getElementById('task-tag').value = tk.tag || '';
+  document.getElementById('task-due').value = tk.due || '';
+  document.getElementById('task-time').value = tk.time || '';
+  document.getElementById('task-time-end').value = tk.timeEnd || '';
+  document.getElementById('task-pri').value = tk.pri || 'mid';
+  document.getElementById('task-notify').checked = tk.notify !== false;
+  editingTaskId = id;
+  document.getElementById('btn-task-add').textContent = t('save');
+  document.getElementById('btn-task-cancel').style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('task-title').focus();
+}
+function cancelTaskEdit() {
+  editingTaskId = null;
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-tag').value = '';
+  document.getElementById('task-due').value = '';
+  document.getElementById('task-time').value = '';
+  document.getElementById('task-time-end').value = '';
+  document.getElementById('task-notify').checked = true;
+  document.getElementById('btn-task-add').textContent = t('add');
+  document.getElementById('btn-task-cancel').style.display = 'none';
 }
 function toggleTask(id) {
   const tk = tasks.find(t => t.id === id);
@@ -865,9 +917,11 @@ function taskHTML(tk) {
   return `<div class="task-item ${tk.done ? 'done' : ''}">
     <input type="checkbox" ${tk.done ? 'checked' : ''} onchange="toggleTask('${tk.id}')">
     <span class="task-title">${esc(tk.title)}</span>
+    ${tk.notify === false ? '<span class="mute-mark">🔕</span>' : ''}
     ${tk.tag ? `<span class="tag-chip">#${esc(tk.tag)}</span>` : ''}
     <span class="badge ${tk.pri}">${t(priKey)}</span>
     ${dueTimeStr(tk) ? `<span class="task-due ${overdue ? 'overdue' : ''}">${dueTimeStr(tk)}</span>` : ''}
+    <button class="small edit" onclick="editTask('${tk.id}')">✎</button>
     <button class="small" onclick="delTask('${tk.id}')">✕</button>
   </div>`;
 }
@@ -890,9 +944,15 @@ function renderTasks() {
   document.getElementById('task-list-done').innerHTML = done.length ? done.map(taskHTML).join('') : `<div class="empty">${t('empty_done')}</div>`;
 }
 
-// ---------- Pomodoro ----------
+// ---------- Pomodoro (timestamp-based: survives closing the page) ----------
 let pomoCfg = store.load('pomoCfg', { work: 25, brk: 5 });
-let pomoMode = 'work', pomoLeft = pomoCfg.work * 60, pomoInterval = null;
+let pomoMode = 'work', pomoLeft = pomoCfg.work * 60, pomoEndAt = null, pomoInterval = null;
+let pomoStat = store.load('pomo', { date: todayStr(), count: 0 });
+if (pomoStat.date !== todayStr()) pomoStat = { date: todayStr(), count: 0 };
+
+function pomoSave() {
+  store.save('pomoRun', { running: !!pomoInterval, mode: pomoMode, endAt: pomoEndAt, left: pomoLeft });
+}
 function setPomoCfg() {
   const w = Math.min(180, Math.max(1, +document.getElementById('pomo-work-min').value || 25));
   const b = Math.min(60, Math.max(1, +document.getElementById('pomo-break-min').value || 5));
@@ -900,44 +960,70 @@ function setPomoCfg() {
   store.save('pomoCfg', pomoCfg);
   document.getElementById('pomo-work-min').value = w;
   document.getElementById('pomo-break-min').value = b;
-  if (!pomoInterval) { pomoMode = 'work'; pomoLeft = w * 60; updatePomoUI(); }
+  if (!pomoInterval) { pomoMode = 'work'; pomoLeft = w * 60; pomoEndAt = null; pomoSave(); updatePomoUI(); }
 }
-let pomoStat = store.load('pomo', { date: todayStr(), count: 0 });
-if (pomoStat.date !== todayStr()) pomoStat = { date: todayStr(), count: 0 };
-
 function pomoToggle() {
   if (pomoInterval) {
     clearInterval(pomoInterval);
     pomoInterval = null;
+    pomoEndAt = null;
   } else {
-    pomoInterval = setInterval(pomoTick, 1000);
+    pomoEndAt = Date.now() + pomoLeft * 1000;
+    pomoInterval = setInterval(pomoTick, 500);
   }
+  pomoSave();
   updatePomoUI();
 }
 function pomoReset() {
   clearInterval(pomoInterval);
   pomoInterval = null;
+  pomoEndAt = null;
   pomoMode = 'work';
   pomoLeft = pomoCfg.work * 60;
+  pomoSave();
   updatePomoUI();
 }
+function pomoAdvance(notifyUser) {
+  if (pomoMode === 'work') {
+    pomoStat = { date: todayStr(), count: (pomoStat.date === todayStr() ? pomoStat.count : 0) + 1 };
+    store.save('pomo', pomoStat);
+    pomoMode = 'break';
+    pomoLeft = pomoCfg.brk * 60;
+    if (notifyUser && 'Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('brk') + '!');
+  } else {
+    pomoMode = 'work';
+    pomoLeft = pomoCfg.work * 60;
+    if (notifyUser && 'Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('focus') + '!');
+  }
+}
 function pomoTick() {
-  pomoLeft--;
+  if (pomoEndAt) pomoLeft = Math.max(0, Math.round((pomoEndAt - Date.now()) / 1000));
   if (pomoLeft <= 0) {
     beep();
-    if (pomoMode === 'work') {
-      pomoStat = { date: todayStr(), count: (pomoStat.date === todayStr() ? pomoStat.count : 0) + 1 };
-      store.save('pomo', pomoStat);
-      pomoMode = 'break';
-      pomoLeft = pomoCfg.brk * 60;
-      if ('Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('brk') + '!');
-    } else {
-      pomoMode = 'work';
-      pomoLeft = pomoCfg.work * 60;
-      if ('Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('focus') + '!');
-    }
+    pomoAdvance(true);
+    pomoEndAt = Date.now() + pomoLeft * 1000; // keep running into next phase
+    pomoSave();
   }
   updatePomoUI();
+}
+function pomoRestore() {
+  const r = store.load('pomoRun', null);
+  if (!r) return;
+  pomoMode = r.mode || 'work';
+  if (r.running && r.endAt) {
+    const rem = Math.round((r.endAt - Date.now()) / 1000);
+    if (rem > 0) {
+      pomoLeft = rem;
+      pomoEndAt = r.endAt;
+      pomoInterval = setInterval(pomoTick, 500);
+    } else {
+      pomoAdvance(false); // finished while the page was closed
+      pomoEndAt = null;
+      pomoSave();
+    }
+  } else if (typeof r.left === 'number' && r.left > 0) {
+    pomoLeft = r.left;
+  }
 }
 function updatePomoUI() {
   const mm = String(Math.floor(pomoLeft / 60)).padStart(2, '0');
@@ -948,26 +1034,63 @@ function updatePomoUI() {
   modeEl.className = 'pomo-mode' + (pomoMode === 'break' ? ' break' : '');
   document.getElementById('pomo-toggle').textContent = pomoInterval ? t('pause') : t('start');
   document.getElementById('pomo-count').textContent = t('pomo_count')(pomoStat.date === todayStr() ? pomoStat.count : 0);
+  document.title = pomoInterval ? `${mm}:${ss} ${pomoMode === 'work' ? '🍅' : '☕'} My Planner` : 'My Planner';
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && pomoInterval) pomoTick(); });
+
+// ---------- Sounds ----------
+let soundType = localStorage.getItem('planner_sound') || 'chime';
+function tone(ctx, freq, startAt, dur, vol) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, ctx.currentTime + startAt);
+  gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + startAt + dur);
+  osc.start(ctx.currentTime + startAt);
+  osc.stop(ctx.currentTime + startAt + dur);
 }
 function beep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 830;
-    gain.gain.setValueAtTime(.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .9);
-    osc.start(); osc.stop(ctx.currentTime + .9);
+    if (soundType === 'beep') {
+      tone(ctx, 830, 0, .6, .25);
+    } else if (soundType === 'chime') {
+      tone(ctx, 660, 0, .4, .22);
+      tone(ctx, 880, .18, .55, .22);
+    } else { // bell
+      tone(ctx, 1318, 0, 1.1, .22);
+      tone(ctx, 1976, 0, .7, .08);
+    }
   } catch {}
+}
+function setSound(s) {
+  soundType = s;
+  localStorage.setItem('planner_sound', s);
+  renderSoundChips();
+  beep();
+}
+function renderSoundChips() {
+  const el = document.getElementById('sound-chips');
+  if (!el) return;
+  el.innerHTML = `<span class="settings-label">${t('sound_label')}</span>` +
+    ['beep','chime','bell'].map(s => `<button class="chip-btn ${soundType === s ? 'on' : ''}" onclick="setSound('${s}')">${t('snd_' + s)}</button>`).join('');
 }
 
 // ---------- Events (incl. recurring) ----------
+const EV_COLORS = ['#8c6d4f', '#b3543f', '#5f7a4e', '#4a6785'];
+let selectedEvColor = EV_COLORS[0];
+function renderColorSwatches() {
+  document.getElementById('event-colors').innerHTML = EV_COLORS.map(c =>
+    `<button class="color-sw ${selectedEvColor === c ? 'sel' : ''}" style="background:${c}" onclick="pickEvColor('${c}')"></button>`).join('');
+}
+function pickEvColor(c) { selectedEvColor = c; renderColorSwatches(); }
+
 function eventsOn(ds) {
   const dow = strToDate(ds).getDay();
   const rec = recurring
     .filter(r => r.dow === dow && ds >= r.from)
-    .map(r => ({ id: r.id, date: ds, time: r.time, timeEnd: r.timeEnd, title: r.title, rec: true }));
+    .map(r => ({ id: r.id, date: ds, time: r.time, timeEnd: r.timeEnd, title: r.title, color: r.color, notify: r.notify, rec: true }));
   return [...events.filter(e => e.date === ds), ...rec];
 }
 
@@ -975,6 +1098,7 @@ function eventsOn(ds) {
 let calYear, calMonth;
 { const n = new Date(); calYear = n.getFullYear(); calMonth = n.getMonth(); }
 let modalDate = null;
+let editingEventId = null, editingEventRec = false;
 
 function calMove(d) {
   calMonth += d;
@@ -1002,7 +1126,7 @@ function renderCal() {
     const dayTasks = tasks.filter(t => t.due === ds && !t.done);
     return `<div class="cal-cell ${other ? 'other' : ''} ${ds === today ? 'today' : ''}" onclick="openModal('${ds}')">
       <span class="daynum">${d.getDate()}</span>
-      ${dayEvents.length ? `<div class="ev-dots">${dayEvents.slice(0, 6).map(e => `<span class="ev-dot${e.rec ? ' rec' : ''}"></span>`).join('')}</div>` : ''}
+      ${dayEvents.length ? `<div class="ev-dots">${dayEvents.slice(0, 6).map(e => `<span class="ev-dot${e.rec ? ' rec' : ''}" style="background:${e.color || EV_COLORS[0]}"></span>`).join('')}</div>` : ''}
       ${dayTasks.length ? `<div class="cal-task-dot">📌${dayTasks.length}</div>` : ''}
     </div>`;
   });
@@ -1010,7 +1134,7 @@ function renderCal() {
 function openModal(ds) {
   modalDate = ds;
   document.getElementById('modal-date').textContent = fmtDateFull(ds);
-  document.getElementById('event-repeat').checked = false;
+  cancelEventEdit();
   renderModalEvents();
   document.getElementById('modal-bg').classList.add('open');
   document.getElementById('event-title').focus();
@@ -1019,7 +1143,9 @@ function renderModalEvents() {
   const list = eventsOn(modalDate).sort((a,b) => (a.time||'') < (b.time||'') ? -1 : 1);
   const dayTasks = tasks.filter(t => t.due === modalDate);
   let html = list.map(e => `<div class="modal-event-item">
-      <span style="flex:1">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}</span>
+      <span class="ev-dot inline" style="background:${e.color || EV_COLORS[0]}"></span>
+      <span style="flex:1">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}${e.notify === false ? ' 🔕' : ''}</span>
+      <button class="small edit" onclick="editEvent('${e.id}', ${!!e.rec})">✎</button>
       <button class="small" onclick="${e.rec ? `delRecurring('${e.id}')` : `delEvent('${e.id}')`}">✕</button>
     </div>`).join('');
   html += dayTasks.map(tk => `<div class="modal-event-item"><span style="flex:1">📌 ${timeStr(tk) ? timeStr(tk) + ' ' : ''}${esc(tk.title)}${tk.done ? ' ' + t('done_suffix') : ''}</span></div>`).join('');
@@ -1030,19 +1156,54 @@ function addEvent() {
   if (!title || !modalDate) return;
   const time = document.getElementById('event-time').value;
   const timeEnd = document.getElementById('event-time-end').value;
-  if (document.getElementById('event-repeat').checked) {
-    recurring.push({ id: uid(), dow: strToDate(modalDate).getDay(), time, timeEnd, title, from: modalDate });
+  const notify = document.getElementById('event-notify').checked;
+
+  if (editingEventId) {
+    const list = editingEventRec ? recurring : events;
+    const e = list.find(x => x.id === editingEventId);
+    if (e) Object.assign(e, { title, time, timeEnd, notify, color: selectedEvColor });
+    store.save(editingEventRec ? 'recurring' : 'events', list);
+  } else if (document.getElementById('event-repeat').checked) {
+    recurring.push({ id: uid(), dow: strToDate(modalDate).getDay(), time, timeEnd, title, color: selectedEvColor, notify, from: modalDate });
     store.save('recurring', recurring);
   } else {
-    events.push({ id: uid(), date: modalDate, time, timeEnd, title });
+    events.push({ id: uid(), date: modalDate, time, timeEnd, title, color: selectedEvColor, notify });
     store.save('events', events);
   }
+  cancelEventEdit();
+  renderModalEvents();
+  renderCal();
+}
+function editEvent(id, rec) {
+  const list = rec ? recurring : events;
+  const e = list.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('event-title').value = e.title;
+  document.getElementById('event-time').value = e.time || '';
+  document.getElementById('event-time-end').value = e.timeEnd || '';
+  document.getElementById('event-notify').checked = e.notify !== false;
+  selectedEvColor = e.color || EV_COLORS[0];
+  renderColorSwatches();
+  editingEventId = id;
+  editingEventRec = rec;
+  document.getElementById('event-repeat').parentElement.style.display = 'none';
+  document.getElementById('btn-event-add').textContent = t('save');
+  document.getElementById('btn-event-cancel').style.display = '';
+  document.getElementById('event-title').focus();
+}
+function cancelEventEdit() {
+  editingEventId = null;
+  editingEventRec = false;
   document.getElementById('event-title').value = '';
   document.getElementById('event-time').value = '';
   document.getElementById('event-time-end').value = '';
   document.getElementById('event-repeat').checked = false;
-  renderModalEvents();
-  renderCal();
+  document.getElementById('event-notify').checked = true;
+  document.getElementById('event-repeat').parentElement.style.display = '';
+  selectedEvColor = EV_COLORS[0];
+  renderColorSwatches();
+  document.getElementById('btn-event-add').textContent = t('add_event');
+  document.getElementById('btn-event-cancel').style.display = 'none';
 }
 function delEvent(id) {
   events = events.filter(e => e.id !== id);
@@ -1058,6 +1219,7 @@ function delRecurring(id) {
 }
 function closeModal() {
   document.getElementById('modal-bg').classList.remove('open');
+  cancelEventEdit();
   renderAll();
 }
 
@@ -1173,7 +1335,7 @@ function habitStreak(h) {
   const set = new Set(h.dates);
   let streak = 0;
   const d = new Date();
-  if (!set.has(dateToStr(d))) d.setDate(d.getDate() - 1); // allow counting up to yesterday
+  if (!set.has(dateToStr(d))) d.setDate(d.getDate() - 1);
   while (set.has(dateToStr(d))) {
     streak++;
     d.setDate(d.getDate() - 1);
@@ -1277,7 +1439,7 @@ function renderDiary() {
       <div class="diary-date">
         <span><span class="mood">${sel.mood}</span>${fmtDateFull(sel.date)}</span>
         <span>
-          <button class="small" style="color:#a1937f" onclick="editDiary('${sel.date}')">${t('edit')}</button>
+          <button class="small edit" onclick="editDiary('${sel.date}')">${t('edit')}</button>
           <button class="small" onclick="delDiary('${sel.date}')">✕</button>
         </span>
       </div>
@@ -1293,7 +1455,7 @@ function toggleLater() {
   document.getElementById('btn-later').textContent = showLater ? t('hide_later') : t('show_later');
 }
 function eventItemHTML(e) {
-  return `<div class="task-item"><span class="task-title">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}</span></div>`;
+  return `<div class="task-item"><span class="ev-dot inline" style="background:${e.color || EV_COLORS[0]}"></span><span class="task-title">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}</span></div>`;
 }
 function renderDash() {
   const today = todayStr();
@@ -1305,7 +1467,6 @@ function renderDash() {
   document.getElementById('dash-today-count').textContent = open.filter(t => t.due === today).length;
   document.getElementById('dash-open-count').textContent = open.length;
 
-  // this week: day by day (includes recurring)
   let weekHTML = '';
   const d = new Date();
   for (let i = 0; i <= 7; i++) {
@@ -1319,7 +1480,6 @@ function renderDash() {
   }
   document.getElementById('dash-events').innerHTML = weekHTML || `<div class="empty">${t('empty_events_week')}</div>`;
 
-  // later: one-off events beyond a week
   const laterEvents = events.filter(e => e.date > weekStr);
   const byDate = {};
   laterEvents.forEach(e => { (byDate[e.date] = byDate[e.date] || []).push(e); });
@@ -1369,7 +1529,6 @@ function toggleNotif() {
     updateNotifBtn();
   });
 }
-// notification timing (multiple choices, applies to events & tasks with a time)
 let notifyOffsets = store.load('notifyOffsets', [0]);
 const OFFSET_OPTS = [0, 5, 15, 30, 60, 1440];
 function renderOffsetChips() {
@@ -1397,16 +1556,15 @@ function checkReminders() {
   const today = todayStr();
   const hm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
-  // events & tasks: check today and tomorrow (for "1 day before")
   [today, dateToStr(new Date(Date.now() + 86400000))].forEach(ds => {
     const targetMs = tm => { const [H, M] = tm.split(':').map(Number); const d = strToDate(ds); d.setHours(H, M, 0, 0); return d.getTime(); };
-    eventsOn(ds).filter(e => e.time).forEach(e => {
+    eventsOn(ds).filter(e => e.time && e.notify !== false).forEach(e => {
       notifyOffsets.forEach(off => {
         if (targetMs(e.time) - off * 60000 === nowMs)
           fireNotif('📅', e.title, (off ? t('off_' + off) + ' · ' : '') + fmtDate(ds) + ' ' + timeStr(e), 'e' + e.id + ds + off);
       });
     });
-    tasks.filter(tk => !tk.done && tk.due === ds && tk.time).forEach(tk => {
+    tasks.filter(tk => !tk.done && tk.due === ds && tk.time && tk.notify !== false).forEach(tk => {
       notifyOffsets.forEach(off => {
         if (targetMs(tk.time) - off * 60000 === nowMs)
           fireNotif('📌', tk.title, (off ? t('off_' + off) + ' · ' : '') + fmtDate(ds) + ' ' + timeStr(tk), 't' + tk.id + ds + off);
@@ -1414,7 +1572,6 @@ function checkReminders() {
     });
   });
 
-  // habits: daily at their set time, only if not checked yet
   habits.filter(h => h.remind === hm && !h.dates.includes(today)).forEach(h => {
     fireNotif('🔥', h.name, t('habit_notif_body'), 'h' + h.id + today);
   });
@@ -1428,6 +1585,8 @@ function renderAll() {
 document.getElementById('diary-date').value = todayStr();
 document.getElementById('pomo-work-min').value = pomoCfg.work;
 document.getElementById('pomo-break-min').value = pomoCfg.brk;
+pomoRestore();
+renderColorSwatches();
 applyI18n();
 renderMoodPicker();
 renderAll();
