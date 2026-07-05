@@ -10,6 +10,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="My Planner">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -150,6 +153,8 @@
     border-bottom: 1px solid var(--border);
   }
   .task-item:last-child { border-bottom: none; }
+  .task-item { cursor: pointer; }
+  .modal-event-item { cursor: pointer; }
   .task-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
   .task-item.done .task-title { text-decoration: line-through; color: #c5b8a5; }
   .task-title { flex: 1; font-size: 14px; font-weight: 500; }
@@ -200,6 +205,7 @@
     padding: 5px 14px;
     cursor: pointer;
     font-size: 14px;
+    font-family: inherit;
     color: var(--muted);
   }
   .cal-header button:hover { border-color: var(--accent); color: var(--accent); }
@@ -230,7 +236,7 @@
   .diary-cal-cell .mood-big { font-size: 23px; margin-top: 2px; }
   .diary-cal-cell.has-entry { background: #fdfaf3; }
   .diary-cal-cell.selected { border: 2px solid var(--accent-dark); }
-  .color-swatches { display: flex; gap: 7px; align-items: center; }
+  .color-swatches { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
   .color-sw {
     width: 24px; height: 24px;
     border-radius: 50%;
@@ -347,6 +353,9 @@
   .settings-card { background: transparent; border: none; box-shadow: none; padding: 6px 4px; }
   .settings-row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
   .settings-label { font-size: 11px; color: #c5b8a5; letter-spacing: 1px; text-transform: uppercase; margin-right: 4px; }
+  .sync-panel { width: 100%; max-width: 520px; margin-top: 8px; }
+  .sync-panel textarea { width: 100%; font-size: 12px; font-family: monospace; }
+  .sync-mail { font-size: 12.5px; color: var(--muted); }
 
   /* Modal */
   .modal-bg {
@@ -465,7 +474,7 @@
 <body>
 
 <header>
-  <h1>MY PLANNER</h1>
+  <h1 onclick="showView('dash')" style="cursor:pointer;">MY PLANNER</h1>
   <nav>
     <button data-view="dash" class="active" data-i18n="nav_home"></button>
     <button data-view="tasks" data-i18n="nav_tasks"></button>
@@ -517,6 +526,7 @@
       <div class="settings-row" id="notif-offsets" style="margin-top:10px;"></div>
       <div class="settings-row" id="sound-chips" style="margin-top:8px;"></div>
       <div class="settings-row" id="theme-chips" style="margin-top:8px;"></div>
+      <div class="settings-row" id="sync-area" style="margin-top:8px;"></div>
     </div>
   </section>
 
@@ -697,7 +707,8 @@ const I18N = {
     search_ph: 'Search tasks...', all_tags: 'All tags',
     add_goal: 'Add a Main Goal', goal_ph: 'Main goal (e.g. TOEIC 800)', goals: 'Goals',
     goal_hint: 'Click "+ Mid goal" on a main goal to add a mid goal, and "+ Sub goal" on a mid goal to add a sub goal. Each goal has its own progress — they are not linked.',
-    notify_at_hint: 'The time field next to 🔔 sets a custom notification time (optional). If empty, notifications follow the default timing set on Home.',
+    notify_at_hint: 'The time field next to 🔔 sets a custom notification time (optional). If empty, notifications follow the default timing set on Home. Tap a task row to edit it.',
+    confirm_del: n => `Delete "${n}"?`,
     add_habit: 'Add a Habit', habit_ph: 'Habit (e.g. English vocab, 10 min)', habits: 'My Habits',
     habit_hint: 'Tap a circle to mark that day done. Streak counts consecutive days. Set a ⏰ time on a habit to get a daily reminder (only fires if not yet checked, while the page is open). Leave it empty for no reminder.',
     empty_habits: 'No habits yet', streak: 'streak',
@@ -717,6 +728,9 @@ const I18N = {
     notify_when: 'Notify:', off_0: 'At time', off_5: '5 min before', off_15: '15 min before', off_30: '30 min before', off_60: '1 hr before', off_1440: '1 day before',
     sound_label: 'Sound:', snd_beep: 'Beep', snd_chime: 'Chime', snd_bell: 'Bell', snd_none: 'None',
     theme_label: 'Theme:', th_auto: 'Auto', th_light: 'Light', th_dark: 'Dark',
+    sync_label: 'Sync:', sync_setup: '☁ Set up sync', sync_login: 'Sign in with Google', sync_logout: 'Sign out',
+    sync_remove: 'Remove config', sync_save: 'Save & reload', sync_ok: 'Synced', sync_err: 'Sync error',
+    sync_bad: 'Could not read the config', sync_ph: 'Paste your firebaseConfig here (the { ... } part)',
     pomo_min: 'min',
     deleted: s => `Deleted "${s}"`,
     no_entry: d => `No entry for ${d}. Write one above!`,
@@ -740,7 +754,8 @@ const I18N = {
     search_ph: 'タスクを検索…', all_tags: 'すべてのタグ',
     add_goal: '大目標を追加', goal_ph: '大目標(例: TOEIC 800点)', goals: '進捗一覧',
     goal_hint: '大目標の「＋中目標」で中目標、中目標の「＋小目標」で小目標を追加できます。達成率はそれぞれ独立していて連動しません。',
-    notify_at_hint: '🔔の隣の時刻欄で通知時刻を個別に指定できます(任意)。空欄ならホームで設定した通知タイミングに従います。',
+    notify_at_hint: '🔔の隣の時刻欄で通知時刻を個別に指定できます(任意)。空欄ならホームで設定した通知タイミングに従います。タスクの行をタップすると編集できます。',
+    confirm_del: n => `「${n}」を削除しますか?`,
     add_habit: '習慣を追加', habit_ph: '習慣(例: 英単語10分)', habits: '習慣リスト',
     habit_hint: '丸をタップするとその日の達成をチェックできます。連続日数(ストリーク)が表示されます。習慣に⏰時刻を設定すると、その時刻に未チェックの場合だけ通知が届きます(ページを開いている間のみ)。空欄なら通知なし。',
     empty_habits: '習慣はまだありません', streak: '日連続',
@@ -760,6 +775,9 @@ const I18N = {
     notify_when: '通知タイミング:', off_0: '定刻', off_5: '5分前', off_15: '15分前', off_30: '30分前', off_60: '1時間前', off_1440: '前日',
     sound_label: '通知音:', snd_beep: 'ビープ', snd_chime: 'チャイム', snd_bell: 'ベル', snd_none: 'なし',
     theme_label: 'テーマ:', th_auto: '自動', th_light: 'ライト', th_dark: 'ダーク',
+    sync_label: '同期:', sync_setup: '☁ 同期を設定', sync_login: 'Googleでログイン', sync_logout: 'ログアウト',
+    sync_remove: '設定を削除', sync_save: '保存して再読み込み', sync_ok: '同期済み', sync_err: '同期エラー',
+    sync_bad: '設定を読み取れませんでした', sync_ph: 'firebaseConfig({ ... }の部分)をここに貼り付け',
     pomo_min: '分',
     deleted: s => `「${s}」を削除しました`,
     no_entry: d => `${d}の記録はありません。上のフォームから書けます`,
@@ -787,6 +805,7 @@ function applyI18n() {
   renderOffsetChips();
   renderSoundChips();
   renderThemeChips();
+  renderSyncUI();
 }
 function toggleLang() {
   lang = lang === 'en' ? 'ja' : 'en';
@@ -801,16 +820,23 @@ const store = {
     try { return JSON.parse(localStorage.getItem('planner_' + key)) ?? def; }
     catch { return def; }
   },
-  save(key, val) { localStorage.setItem('planner_' + key, JSON.stringify(val)); }
+  save(key, val) {
+    localStorage.setItem('planner_' + key, JSON.stringify(val));
+    if (typeof DATA_KEYS !== 'undefined' && DATA_KEYS.includes(key)) markModified();
+  },
+  saveRaw(key, val) { localStorage.setItem('planner_' + key, JSON.stringify(val)); }
 };
 
-let tasks = store.load('tasks', []);         // {id,title,tag,due,time,timeEnd,pri,notify,notifyAt,done,doneAt}
-let events = store.load('events', []);       // {id,date,time,timeEnd,title,color,notify,notifyAt}
-let recurring = store.load('recurring', []); // {id,dow,time,timeEnd,title,color,notify,notifyAt,from}
+let tasks = store.load('tasks', []);
+let events = store.load('events', []);
+let recurring = store.load('recurring', []);
 let projects = store.load('projects', []);
 let diary = store.load('diary', []);
 let habits = store.load('habits', []);
-projects.forEach(p => { if (!p.children) p.children = []; p.children.forEach(c => { if (!c.children) c.children = []; }); });
+function fixProjects() {
+  projects.forEach(p => { if (!p.children) p.children = []; p.children.forEach(c => { if (!c.children) c.children = []; }); });
+}
+fixProjects();
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const dateToStr = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -832,6 +858,15 @@ function exportData() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+function reloadData() {
+  tasks = store.load('tasks', []);
+  events = store.load('events', []);
+  recurring = store.load('recurring', []);
+  projects = store.load('projects', []);
+  diary = store.load('diary', []);
+  habits = store.load('habits', []);
+  fixProjects();
+}
 function importData(input) {
   const file = input.files[0];
   if (!file) return;
@@ -841,13 +876,7 @@ function importData(input) {
       const data = JSON.parse(reader.result);
       if (data.app !== 'my-planner') throw new Error('bad file');
       DATA_KEYS.forEach(k => { if (Array.isArray(data[k])) store.save(k, data[k]); });
-      tasks = store.load('tasks', []);
-      events = store.load('events', []);
-      recurring = store.load('recurring', []);
-      projects = store.load('projects', []);
-      diary = store.load('diary', []);
-      habits = store.load('habits', []);
-      projects.forEach(p => { if (!p.children) p.children = []; p.children.forEach(c => { if (!c.children) c.children = []; }); });
+      reloadData();
       showToastPlain(t('import_done'));
       renderAll();
     } catch {
@@ -945,6 +974,7 @@ let lastDeleted = null, toastTimer = null;
 function delTask(id) {
   const idx = tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
+  if (!confirm(t('confirm_del')(tasks[idx].title))) return;
   lastDeleted = { type: 'task', item: tasks[idx] };
   tasks.splice(idx, 1);
   store.save('tasks', tasks);
@@ -978,17 +1008,25 @@ function undoDelete() {
 
 const timeStr = tk => tk.time ? (tk.time + (tk.timeEnd ? '–' + tk.timeEnd : '')) : '';
 const dueTimeStr = tk => tk.due ? fmtDate(tk.due) + (timeStr(tk) ? ' ' + timeStr(tk) : '') : timeStr(tk);
-function taskHTML(tk) {
+function dashRowTap(ev) {
+  if (ev.target.closest('button') || ev.target.closest('input')) return;
+  showView('tasks');
+}
+function taskRowTap(ev, id) {
+  if (ev.target.closest('button') || ev.target.closest('input')) return;
+  editTask(id);
+}
+function taskHTML(tk, dashTap) {
   const overdue = tk.due && !tk.done && tk.due < todayStr();
   const priKey = { high: 'pri_high', mid: 'pri_mid', low: 'pri_low' }[tk.pri];
-  return `<div class="task-item ${tk.done ? 'done' : ''}">
+  const rowClick = dashTap ? 'dashRowTap(event)' : `taskRowTap(event,'${tk.id}')`;
+  return `<div class="task-item ${tk.done ? 'done' : ''}" onclick="${rowClick}">
     <input type="checkbox" ${tk.done ? 'checked' : ''} onchange="toggleTask('${tk.id}')">
     <span class="task-title">${esc(tk.title)}</span>
     ${tk.notify === false ? '<span class="mute-mark">🔕</span>' : (tk.notifyAt ? `<span class="mute-mark">🔔${tk.notifyAt}</span>` : '')}
     ${tk.tag ? `<span class="tag-chip">#${esc(tk.tag)}</span>` : ''}
     <span class="badge ${tk.pri}">${t(priKey)}</span>
     ${dueTimeStr(tk) ? `<span class="task-due ${overdue ? 'overdue' : ''}">${dueTimeStr(tk)}</span>` : ''}
-    <button class="small edit" onclick="editTask('${tk.id}')">✎</button>
     <button class="small" onclick="delTask('${tk.id}')">✕</button>
   </div>`;
 }
@@ -1007,8 +1045,8 @@ function renderTasks() {
   const sortFn = (a, b) => ((a.due || '9999') + (a.time || '99')) < ((b.due || '9999') + (b.time || '99')) ? -1 : 1;
   const open = tasks.filter(t => !t.done && match(t)).sort(sortFn);
   const done = tasks.filter(t => t.done && match(t)).sort((a,b) => (b.doneAt||0) - (a.doneAt||0));
-  document.getElementById('task-list-open').innerHTML = open.length ? open.map(taskHTML).join('') : `<div class="empty">${t('empty_open')}</div>`;
-  document.getElementById('task-list-done').innerHTML = done.length ? done.map(taskHTML).join('') : `<div class="empty">${t('empty_done')}</div>`;
+  document.getElementById('task-list-open').innerHTML = open.length ? open.map(tk => taskHTML(tk)).join('') : `<div class="empty">${t('empty_open')}</div>`;
+  document.getElementById('task-list-done').innerHTML = done.length ? done.map(tk => taskHTML(tk)).join('') : `<div class="empty">${t('empty_done')}</div>`;
 }
 
 // ---------- Pomodoro (timestamp-based) ----------
@@ -1018,13 +1056,13 @@ let pomoStat = store.load('pomo', { date: todayStr(), count: 0 });
 if (pomoStat.date !== todayStr()) pomoStat = { date: todayStr(), count: 0 };
 
 function pomoSave() {
-  store.save('pomoRun', { running: !!pomoInterval, mode: pomoMode, endAt: pomoEndAt, left: pomoLeft });
+  store.saveRaw('pomoRun', { running: !!pomoInterval, mode: pomoMode, endAt: pomoEndAt, left: pomoLeft });
 }
 function setPomoCfg() {
   const w = Math.min(180, Math.max(1, +document.getElementById('pomo-work-min').value || 25));
   const b = Math.min(60, Math.max(1, +document.getElementById('pomo-break-min').value || 5));
   pomoCfg = { work: w, brk: b };
-  store.save('pomoCfg', pomoCfg);
+  store.saveRaw('pomoCfg', pomoCfg);
   document.getElementById('pomo-work-min').value = w;
   document.getElementById('pomo-break-min').value = b;
   if (!pomoInterval) { pomoMode = 'work'; pomoLeft = w * 60; pomoEndAt = null; pomoSave(); updatePomoUI(); }
@@ -1054,7 +1092,7 @@ function pomoReset() {
 function pomoAdvance(notifyUser) {
   if (pomoMode === 'work') {
     pomoStat = { date: todayStr(), count: (pomoStat.date === todayStr() ? pomoStat.count : 0) + 1 };
-    store.save('pomo', pomoStat);
+    store.saveRaw('pomo', pomoStat);
     pomoMode = 'break';
     pomoLeft = pomoCfg.brk * 60;
     if (notifyUser && 'Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('brk') + '!');
@@ -1107,8 +1145,6 @@ function updatePomoUI() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden && pomoInterval) pomoTick(); });
 
 // ---------- Sounds ----------
-// A single shared AudioContext, unlocked by the first user tap (mobile browsers
-// block sound until the user has interacted with the page at least once).
 let soundType = localStorage.getItem('planner_sound') || 'chime';
 let audioCtx = null;
 function ensureAudio() {
@@ -1178,6 +1214,133 @@ function renderThemeChips() {
   if (!el) return;
   el.innerHTML = `<span class="settings-label">${t('theme_label')}</span>` +
     ['auto','light','dark'].map(m => `<button class="chip-btn ${themeMode === m ? 'on' : ''}" onclick="setTheme('${m}')">${t('th_' + m)}</button>`).join('');
+}
+
+// ---------- Cloud Sync (Firebase) ----------
+let fbConfig = store.load('fbconfig', null);
+let fbUser = null, syncTimer = null, fbUnsub = null, lastPushed = 0, syncSetupOpen = false, syncStatus = '';
+let lastLocalMod = +localStorage.getItem('planner_lastmod') || 0;
+
+function markModified() {
+  lastLocalMod = Date.now();
+  localStorage.setItem('planner_lastmod', lastLocalMod);
+  scheduleSync();
+}
+function statusText() {
+  if (syncStatus === 'ok') return '☁ ' + t('sync_ok');
+  if (syncStatus === 'pending') return '☁ …';
+  if (syncStatus === 'error') return '⚠ ' + t('sync_err');
+  return '';
+}
+function setSyncStatus(s) {
+  syncStatus = s;
+  const el = document.getElementById('sync-status');
+  if (el) el.textContent = statusText();
+}
+function renderSyncUI() {
+  const el = document.getElementById('sync-area');
+  if (!el) return;
+  if (typeof firebase === 'undefined') { el.innerHTML = ''; return; }
+  let html = `<span class="settings-label">${t('sync_label')}</span>`;
+  if (!fbConfig) {
+    html += `<button class="chip-btn ${syncSetupOpen ? 'on' : ''}" onclick="toggleSyncSetup()">${t('sync_setup')}</button>`;
+    if (syncSetupOpen) {
+      html += `<div class="sync-panel">
+        <textarea id="fb-config-input" rows="5" placeholder="${t('sync_ph')}"></textarea>
+        <div style="text-align:right; margin-top:6px;">
+          <button class="primary" onclick="saveFbConfig()">${t('sync_save')}</button>
+        </div>
+      </div>`;
+    }
+  } else if (!fbUser) {
+    html += `<button class="chip-btn on" onclick="fbLogin()">${t('sync_login')}</button>
+      <button class="chip-btn" onclick="removeFbConfig()">${t('sync_remove')}</button>`;
+  } else {
+    html += `<span class="sync-mail">${esc(fbUser.email || '')}</span>
+      <span class="settings-label" id="sync-status">${statusText()}</span>
+      <button class="chip-btn" onclick="fbLogout()">${t('sync_logout')}</button>`;
+  }
+  el.innerHTML = html;
+}
+function toggleSyncSetup() {
+  syncSetupOpen = !syncSetupOpen;
+  renderSyncUI();
+  if (syncSetupOpen) document.getElementById('fb-config-input').focus();
+}
+function saveFbConfig() {
+  const txt = document.getElementById('fb-config-input').value;
+  const m = txt.match(/\{[\s\S]*\}/);
+  let cfg = null;
+  if (m) {
+    try { cfg = JSON.parse(m[0]); } catch {
+      try { cfg = (new Function('return ' + m[0]))(); } catch {}
+    }
+  }
+  if (!cfg || !cfg.apiKey || !cfg.projectId) { showToastPlain(t('sync_bad')); return; }
+  store.saveRaw('fbconfig', cfg);
+  location.reload();
+}
+function removeFbConfig() {
+  localStorage.removeItem('planner_fbconfig');
+  location.reload();
+}
+function initFirebase() {
+  if (!fbConfig || typeof firebase === 'undefined') return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+    firebase.auth().onAuthStateChanged(u => {
+      fbUser = u;
+      renderSyncUI();
+      if (u) startSync();
+      else if (fbUnsub) { fbUnsub(); fbUnsub = null; }
+    });
+  } catch (e) { console.error(e); }
+}
+function fbLogin() {
+  if (typeof firebase === 'undefined' || !fbConfig) return;
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(() => firebase.auth().signInWithRedirect(provider));
+}
+function fbLogout() {
+  firebase.auth().signOut();
+}
+function docRef() {
+  return firebase.firestore().collection('planners').doc(fbUser.uid);
+}
+function startSync() {
+  docRef().get().then(snap => {
+    const remote = snap.exists ? snap.data() : null;
+    if (remote && remote.updated > lastLocalMod) applyRemote(remote);
+    else pushNow();
+    if (fbUnsub) fbUnsub();
+    fbUnsub = docRef().onSnapshot(s => {
+      const r = s.exists ? s.data() : null;
+      if (r && r.updated > lastLocalMod && r.updated !== lastPushed) applyRemote(r);
+    });
+  }).catch(() => setSyncStatus('error'));
+}
+function applyRemote(remote) {
+  DATA_KEYS.forEach(k => { if (remote.data && Array.isArray(remote.data[k])) store.saveRaw(k, remote.data[k]); });
+  lastLocalMod = remote.updated;
+  localStorage.setItem('planner_lastmod', lastLocalMod);
+  reloadData();
+  renderAll();
+  setSyncStatus('ok');
+}
+function scheduleSync() {
+  if (!fbUser) return;
+  setSyncStatus('pending');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushNow, 1500);
+}
+function pushNow() {
+  if (!fbUser) return;
+  const data = {};
+  DATA_KEYS.forEach(k => data[k] = store.load(k, []));
+  lastPushed = lastLocalMod || Date.now();
+  docRef().set({ data, updated: lastPushed })
+    .then(() => setSyncStatus('ok'))
+    .catch(() => setSyncStatus('error'));
 }
 
 // ---------- Events (incl. recurring) ----------
@@ -1250,13 +1413,12 @@ function openModal(ds) {
 function renderModalEvents() {
   const list = eventsOn(modalDate).sort((a,b) => (a.time||'') < (b.time||'') ? -1 : 1);
   const dayTasks = tasks.filter(t => t.due === modalDate);
-  let html = list.map(e => `<div class="modal-event-item">
+  let html = list.map(e => `<div class="modal-event-item" onclick="modalEvTap(event, '${e.id}', ${!!e.rec})">
       <span class="ev-dot inline" style="background:${e.color || EV_COLORS[0]}"></span>
       <span style="flex:1">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}${e.notify === false ? ' 🔕' : (e.notifyAt ? ' 🔔' + e.notifyAt : '')}</span>
-      <button class="small edit" onclick="editEvent('${e.id}', ${!!e.rec})">✎</button>
       <button class="small" onclick="${e.rec ? `delRecurring('${e.id}')` : `delEvent('${e.id}')`}">✕</button>
     </div>`).join('');
-  html += dayTasks.map(tk => `<div class="modal-event-item"><span style="flex:1">📌 ${timeStr(tk) ? timeStr(tk) + ' ' : ''}${esc(tk.title)}${tk.done ? ' ' + t('done_suffix') : ''}</span></div>`).join('');
+  html += dayTasks.map(tk => `<div class="modal-event-item" onclick="modalTaskTap(event, '${tk.id}')"><span style="flex:1">📌 ${timeStr(tk) ? timeStr(tk) + ' ' : ''}${esc(tk.title)}${tk.done ? ' ' + t('done_suffix') : ''}</span></div>`).join('');
   document.getElementById('modal-events').innerHTML = html || `<div class="empty">${t('no_events_day')}</div>`;
 }
 function addEvent() {
@@ -1282,6 +1444,15 @@ function addEvent() {
   cancelEventEdit();
   renderModalEvents();
   renderCal();
+}
+function modalEvTap(ev, id, rec) {
+  if (ev.target.closest('button')) return;
+  editEvent(id, rec);
+}
+function modalTaskTap(ev, id) {
+  if (ev.target.closest('button')) return;
+  closeModal();
+  editTask(id);
 }
 function editEvent(id, rec) {
   const list = rec ? recurring : events;
@@ -1317,12 +1488,16 @@ function cancelEventEdit() {
   document.getElementById('btn-event-cancel').style.display = 'none';
 }
 function delEvent(id) {
+  const e = events.find(x => x.id === id);
+  if (e && !confirm(t('confirm_del')(e.title))) return;
   events = events.filter(e => e.id !== id);
   store.save('events', events);
   renderModalEvents();
   renderCal();
 }
 function delRecurring(id) {
+  const r = recurring.find(x => x.id === id);
+  if (r && !confirm(t('confirm_del')(r.title))) return;
   recurring = recurring.filter(r => r.id !== id);
   store.save('recurring', recurring);
   renderModalEvents();
@@ -1384,6 +1559,8 @@ function setPct(id, pct) {
   renderProj();
 }
 function delProj(id) {
+  const p = findProj(id);
+  if (p && !confirm(t('confirm_del')(p.name))) return;
   removeProj(id);
   store.save('projects', projects);
   renderProj();
@@ -1430,6 +1607,8 @@ function setHabitRemind(id, time) {
   store.save('habits', habits);
 }
 function delHabit(id) {
+  const h = habits.find(x => x.id === id);
+  if (h && !confirm(t('confirm_del')(h.name))) return;
   habits = habits.filter(h => h.id !== id);
   store.save('habits', habits);
   renderHabits();
@@ -1505,6 +1684,7 @@ function saveDiary() {
   renderDiary();
 }
 function delDiary(date) {
+  if (!confirm(t('confirm_del')(fmtDateFull(date)))) return;
   diary = diary.filter(d => d.date !== date);
   store.save('diary', diary);
   if (selectedDiaryDate === date) selectedDiaryDate = null;
@@ -1611,12 +1791,12 @@ function renderDash() {
 
   const upcoming = open.filter(t => t.due).sort((a,b) => ((a.due)+(a.time||'')) < ((b.due)+(b.time||'')) ? -1 : 1).slice(0, 5);
   document.getElementById('dash-tasks').innerHTML = upcoming.length
-    ? upcoming.map(taskHTML).join('')
+    ? upcoming.map(tk => taskHTML(tk, true)).join('')
     : `<div class="empty">${t('empty_due')}</div>`;
 
   const recentDone = tasks.filter(t => t.done).sort((a,b) => (b.doneAt||0) - (a.doneAt||0)).slice(0, 5);
   document.getElementById('dash-done').innerHTML = recentDone.length
-    ? recentDone.map(taskHTML).join('')
+    ? recentDone.map(tk => taskHTML(tk, true)).join('')
     : `<div class="empty">${t('empty_done')}</div>`;
 }
 
@@ -1656,7 +1836,7 @@ function renderOffsetChips() {
 }
 function toggleOffset(o) {
   notifyOffsets = notifyOffsets.includes(o) ? notifyOffsets.filter(x => x !== o) : [...notifyOffsets, o];
-  store.save('notifyOffsets', notifyOffsets);
+  store.saveRaw('notifyOffsets', notifyOffsets);
   renderOffsetChips();
 }
 function fireNotif(icon, title, body, key) {
@@ -1678,7 +1858,6 @@ function checkReminders() {
     const check = (item, icon, keyPrefix) => {
       if (item.notify === false) return;
       if (item.notifyAt) {
-        // custom notification time: fires once at that time on the item's date
         if (ds === today && targetMs(item.notifyAt) === nowMs)
           fireNotif(icon, item.title, (timeStr(item) ? timeStr(item) + ' · ' : '') + fmtDate(ds), keyPrefix + item.id + ds + 'na');
       } else if (item.time) {
@@ -1705,14 +1884,13 @@ function renderAll() {
 document.getElementById('diary-date').value = todayStr();
 document.getElementById('pomo-work-min').value = pomoCfg.work;
 document.getElementById('pomo-break-min').value = pomoCfg.brk;
-document.getElementById('dash-tasks').addEventListener('click', dashJump);
-document.getElementById('dash-done').addEventListener('click', dashJump);
 applyTheme();
 pomoRestore();
 renderColorSwatches();
 applyI18n();
 renderMoodPicker();
 renderAll();
+initFirebase();
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js");</script>
 </body>
