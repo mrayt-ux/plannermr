@@ -62,6 +62,7 @@
     border-radius: 99px;
     color: var(--muted);
     transition: all .15s;
+    white-space: nowrap;
   }
   nav button.active { background: var(--ink); color: var(--ink-contrast); }
   nav button:hover:not(.active) { background: #efe9df; color: var(--text); }
@@ -339,7 +340,7 @@
   }
 
   /* Habits */
-  .habit-item { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .habit-item { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border); flex-wrap: wrap; cursor: pointer; }
   .habit-item:last-child { border-bottom: none; }
   .habit-name { flex: 1; min-width: 120px; font-size: 14px; font-weight: 600; }
   .habit-days { display: flex; gap: 4px; }
@@ -492,6 +493,7 @@
     .cal-cell { min-height: 48px; padding: 4px; border-radius: 7px; }
     .diary-cal-cell { min-height: 50px; }
     .diary-cal-cell .mood-big { font-size: 17px; }
+    nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
     nav button { padding: 7px 11px; font-size: 12.5px; }
     header { padding: 10px 12px; }
   }
@@ -507,7 +509,6 @@
     <button data-view="cal" data-i18n="nav_cal"></button>
     <button data-view="habits" data-i18n="nav_habits"></button>
     <button data-view="diary" data-i18n="nav_diary"></button>
-    <button data-view="stats" data-i18n="nav_stats"></button>
   </nav>
 </header>
 
@@ -540,6 +541,9 @@
     <div class="card">
       <h2 data-i18n="recent_done"></h2>
       <div id="dash-done" class="tappable"></div>
+    </div>
+    <div style="text-align:center; margin-bottom:18px;">
+      <button class="ghost" onclick="showView('stats')" data-i18n="open_stats"></button>
     </div>
     <div class="card settings-card">
       <div class="settings-row">
@@ -691,6 +695,9 @@
 
   <!-- Stats -->
   <section id="view-stats" class="view">
+    <div style="margin-bottom:14px;">
+      <button class="ghost" onclick="showView('dash')" data-i18n="back_home"></button>
+    </div>
     <div class="dash-grid">
       <div class="card">
         <div class="stat" id="st-rate">–</div>
@@ -718,7 +725,10 @@
       <div class="mood-week" id="st-mood"></div>
     </div>
     <div class="card">
-      <h2 data-i18n="stats_habits"></h2>
+      <div class="cal-header" style="margin-bottom:10px;">
+        <h2 data-i18n="stats_habits" style="margin:0;"></h2>
+        <span id="st-habit-range" style="display:flex; gap:6px;"></span>
+      </div>
       <div id="st-habits"></div>
     </div>
   </section>
@@ -762,7 +772,7 @@
 // ---------- i18n ----------
 const I18N = {
   en: {
-    nav_home: 'Home', nav_tasks: 'Tasks & Goals', nav_cal: 'Calendar', nav_habits: 'Habits', nav_diary: 'Diary', nav_stats: 'Stats',
+    nav_home: 'Home', nav_tasks: 'Tasks & Goals', nav_cal: 'Calendar', nav_habits: 'Habits', nav_diary: 'Diary',
     stat_today: 'Tasks due today', stat_open: 'Open tasks',
     week_events: 'This Week', show_later: 'Show later events', hide_later: 'Hide later events',
     upcoming: 'Upcoming Tasks', recent_done: 'Recently Completed',
@@ -777,7 +787,7 @@ const I18N = {
     confirm_del: n => `Delete "${n}"?`,
     sub_ph: 'Subtask',
     add_habit: 'Add a Habit', habit_ph: 'Habit (e.g. English vocab, 10 min)', habits: 'My Habits',
-    habit_hint: 'Tap a circle to mark that day done. Streak counts consecutive days. Set a ⏰ time on a habit to get a daily reminder (only fires if not yet checked, while the page is open). Leave it empty for no reminder.',
+    habit_hint: 'Tap a habit row to check off today. Tap a circle to toggle any of the last 7 days. Set a ⏰ time for a daily reminder (only fires if not yet checked, while the page is open).',
     empty_habits: 'No habits yet', streak: 'streak',
     remind_title: 'Daily reminder (optional)', habit_notif_body: 'Time for your habit!',
     write_entry: 'Write an Entry', entry_ph: 'What happened today, how you felt...', save: 'Save',
@@ -791,9 +801,11 @@ const I18N = {
     export: '⬇ Backup', import: '⬆ Restore', import_done: 'Data restored!', import_err: 'Could not read that file',
     ics_export: '📅 Export .ics', ics_import: '📅 Import .ics',
     ics_done: n => `Imported ${n} event(s)`, ics_err: 'Could not read that file',
+    open_stats: '📊 Stats', back_home: '← Home',
     stats_rate: 'Completion — last 7 days', stats_pomo_total: '🍅 This week',
     stats_done: 'Tasks Completed — Last 7 Days', stats_pomo: 'Pomodoros — Last 7 Days',
-    stats_pri: 'Open Tasks by Priority', stats_mood: 'Mood — Last 7 Days', stats_habits: 'Habits — This Week',
+    stats_pri: 'Open Tasks by Priority', stats_mood: 'Mood — Last 7 Days', stats_habits: 'Habits',
+    range_week: 'Week', range_month: 'Month',
     start: 'Start', pause: 'Pause', reset: 'Reset', focus: 'Focus', brk: 'Break',
     pomo_count: n => `🍅 ${n} today`,
     notif_off: '🔔 Reminders: off', notif_on: '🔔 Reminders: on', notif_blocked: '🔕 Notifications blocked',
@@ -815,7 +827,7 @@ const I18N = {
     today_word: 'Today'
   },
   ja: {
-    nav_home: 'ホーム', nav_tasks: 'タスク・進捗', nav_cal: 'カレンダー', nav_habits: '習慣', nav_diary: '日記', nav_stats: '統計',
+    nav_home: 'ホーム', nav_tasks: 'タスク・進捗', nav_cal: 'カレンダー', nav_habits: '習慣', nav_diary: '日記',
     stat_today: '今日締切のタスク', stat_open: '未完了タスク',
     week_events: '1週間の予定', show_later: 'それ以降の予定を表示', hide_later: 'それ以降の予定を隠す',
     upcoming: '期限が近いタスク', recent_done: '最近完了したタスク',
@@ -830,7 +842,7 @@ const I18N = {
     confirm_del: n => `「${n}」を削除しますか?`,
     sub_ph: 'サブタスク',
     add_habit: '習慣を追加', habit_ph: '習慣(例: 英単語10分)', habits: '習慣リスト',
-    habit_hint: '丸をタップするとその日の達成をチェックできます。連続日数(ストリーク)が表示されます。習慣に⏰時刻を設定すると、その時刻に未チェックの場合だけ通知が届きます(ページを開いている間のみ)。空欄なら通知なし。',
+    habit_hint: '習慣の行をタップすると今日の分をチェックできます。丸をタップすると過去7日の任意の日を切り替え。⏰時刻を設定すると、その時刻に未チェックの場合だけ通知が届きます(ページを開いている間のみ)。',
     empty_habits: '習慣はまだありません', streak: '日連続',
     remind_title: '毎日のリマインダー(任意)', habit_notif_body: '習慣の時間です!',
     write_entry: '記録を書く', entry_ph: '今日あったこと、思ったこと…', save: '保存',
@@ -844,9 +856,11 @@ const I18N = {
     export: '⬇ バックアップ', import: '⬆ 復元', import_done: 'データを復元しました!', import_err: 'ファイルを読み込めませんでした',
     ics_export: '📅 ICS書き出し', ics_import: '📅 ICS取り込み',
     ics_done: n => `${n}件の予定を取り込みました`, ics_err: 'ファイルを読み込めませんでした',
+    open_stats: '📊 統計を見る', back_home: '← ホーム',
     stats_rate: '完了率(直近7日)', stats_pomo_total: '🍅 今週の合計',
     stats_done: '完了タスク数(直近7日)', stats_pomo: 'ポモドーロ(直近7日)',
-    stats_pri: '未完了タスクの優先度内訳', stats_mood: '気分の推移(直近7日)', stats_habits: '習慣の達成(今週)',
+    stats_pri: '未完了タスクの優先度内訳', stats_mood: '気分の推移(直近7日)', stats_habits: '習慣の達成',
+    range_week: '週', range_month: '月',
     start: 'スタート', pause: '一時停止', reset: 'リセット', focus: '集中', brk: '休憩',
     pomo_count: n => `🍅 今日 ${n} 回`,
     notif_off: '🔔 通知: オフ', notif_on: '🔔 通知: オン', notif_blocked: '🔕 通知がブロックされています',
@@ -1823,6 +1837,10 @@ function toggleHabitDay(id, ds) {
   store.save('habits', habits);
   renderHabits();
 }
+function habitRowTap(ev, id) {
+  if (ev.target.closest('button') || ev.target.closest('input')) return;
+  toggleHabitDay(id, todayStr());
+}
 function habitStreak(h) {
   const set = new Set(h.dates);
   let streak = 0;
@@ -1849,8 +1867,8 @@ function renderHabits() {
   const today = todayStr();
   document.getElementById('habit-list').innerHTML = habits.length ? habits.map(h => {
     const streak = habitStreak(h);
-    return `<div class="habit-item">
-      <span class="habit-name">${esc(h.name)}</span>
+    return `<div class="habit-item" onclick="habitRowTap(event, '${h.id}')">
+      <span class="habit-name">${h.dates.includes(today) ? '✅ ' : ''}${esc(h.name)}</span>
       <span class="habit-days">${days.map(ds => {
         const dt = strToDate(ds);
         return `<button class="habit-day ${h.dates.includes(ds) ? 'on' : ''} ${ds === today ? 'today-ring' : ''}" onclick="toggleHabitDay('${h.id}','${ds}')" title="${ds}">
@@ -1947,6 +1965,11 @@ function renderDiary() {
 }
 
 // ---------- Stats ----------
+let statsHabitRange = 7;
+function setStatsHabitRange(n) {
+  statsHabitRange = n;
+  renderStats();
+}
 function barsHTML(days, counts) {
   const max = Math.max(...counts, 1);
   return days.map((ds, i) => {
@@ -1993,12 +2016,15 @@ function renderStats() {
     return `<div class="mood-week-day"><div class="emo">${entry ? entry.mood : '·'}</div><div class="lbl">${t('dows')[dt.getDay()]}</div></div>`;
   }).join('');
 
+  document.getElementById('st-habit-range').innerHTML = [7, 30].map(n =>
+    `<button class="chip-btn ${statsHabitRange === n ? 'on' : ''}" onclick="setStatsHabitRange(${n})">${t(n === 7 ? 'range_week' : 'range_month')}</button>`).join('');
+  const hdays = lastNDays(statsHabitRange);
   document.getElementById('st-habits').innerHTML = habits.length ? habits.map(h => {
-    const n = days.filter(ds => h.dates.includes(ds)).length;
+    const n = hdays.filter(ds => h.dates.includes(ds)).length;
     return `<div class="stat-row">
       <span style="flex:1; font-size:13px; font-weight:600;">${esc(h.name)}</span>
-      <div class="bar-bg" style="flex:2; height:9px;"><div class="bar-fill" style="width:${(n / 7) * 100}%"></div></div>
-      <span class="stat-row-num">${n}/7</span>
+      <div class="bar-bg" style="flex:2; height:9px;"><div class="bar-fill" style="width:${(n / statsHabitRange) * 100}%"></div></div>
+      <span class="stat-row-num">${n}/${statsHabitRange}</span>
     </div>`;
   }).join('') : `<div class="empty">${t('empty_habits')}</div>`;
 }
