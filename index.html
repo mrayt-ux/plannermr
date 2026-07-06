@@ -207,11 +207,28 @@
   .chart-num { font-size: 11px; font-weight: 700; color: var(--accent-dark); }
   .chart-label { font-size: 10px; color: var(--muted); font-weight: 600; }
   .mood-week { display: flex; gap: 8px; justify-content: space-between; }
-  .mood-week-day { flex: 1; text-align: center; }
+  .mood-week-day { flex: 1; text-align: center; cursor: pointer; border-radius: 8px; padding: 4px 0; }
+  .mood-week-day:hover { background: #f4ede3; }
   .mood-week-day .emo { font-size: 24px; }
   .mood-week-day .lbl { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
   .stat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .stat-row-num { font-size: 12px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; }
+  .act-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 12px);
+    grid-auto-columns: 12px;
+    gap: 3px;
+    justify-content: start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .act-cell { width: 12px; height: 12px; border-radius: 3px; background: #ece5d8; }
+  .act-cell.l1 { background: #d9c19b; }
+  .act-cell.l2 { background: #bf9c6d; }
+  .act-cell.l3 { background: #9d7748; }
+  .act-cell.l4 { background: #6f5539; }
+  .act-cell.future { visibility: hidden; }
 
   /* Pomodoro */
   .pomo-card { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
@@ -222,7 +239,7 @@
   .pomo-count { font-size: 12px; color: var(--muted); margin-left: auto; }
 
   /* Calendar */
-  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 6px; }
   .cal-header h2 { margin: 0; }
   .cal-header button {
     background: transparent;
@@ -468,6 +485,7 @@
   html.dark .cal-cell.today { background: #2a241b; }
   html.dark .diary-cal-cell.has-entry { background: #282218; }
   html.dark .mood-picker button.sel { background: #332b1f; }
+  html.dark .mood-week-day:hover { background: #2a251d; }
   html.dark .add-goal-btn { background: #332b1f; color: #c7a97f; }
   html.dark .add-goal-btn:hover { background: #3d3426; }
   html.dark .bar-bg { background: #383228; }
@@ -484,6 +502,11 @@
   html.dark .badge.mid { background: #453620; color: #dbb26a; }
   html.dark .badge.low { background: #2c3a26; color: #a3c78f; }
   html.dark .color-sw.sel { border-color: var(--text); }
+  html.dark .act-cell { background: #383228; }
+  html.dark .act-cell.l1 { background: #5a4a2e; }
+  html.dark .act-cell.l2 { background: #7a6238; }
+  html.dark .act-cell.l3 { background: #a1854e; }
+  html.dark .act-cell.l4 { background: #cfa963; }
 
   /* Mobile */
   @media (max-width: 640px) {
@@ -517,11 +540,11 @@
   <!-- Dashboard -->
   <section id="view-dash" class="view active">
     <div class="dash-grid">
-      <div class="card">
+      <div class="card" onclick="showView('tasks')" style="cursor:pointer;">
         <div class="stat" id="dash-today-count">0</div>
         <div class="stat-label" data-i18n="stat_today"></div>
       </div>
-      <div class="card">
+      <div class="card" onclick="showView('tasks')" style="cursor:pointer;">
         <div class="stat" id="dash-open-count">0</div>
         <div class="stat-label" data-i18n="stat_open"></div>
       </div>
@@ -661,7 +684,15 @@
       <p class="hint" data-i18n="habit_hint"></p>
     </div>
     <div class="card">
-      <h2 data-i18n="habits"></h2>
+      <div class="cal-header" style="margin-bottom:10px;">
+        <h2 data-i18n="habits" style="margin:0;"></h2>
+        <span style="display:flex; gap:6px; align-items:center;">
+          <button class="chip-btn" onclick="habitMove(1)">←</button>
+          <span class="settings-label" id="habit-range-label" style="margin:0;"></span>
+          <button class="chip-btn" onclick="habitMove(-1)">→</button>
+          <button class="chip-btn" onclick="habitMove(0)" data-i18n="today_word"></button>
+        </span>
+      </div>
       <div id="habit-list"></div>
     </div>
   </section>
@@ -725,10 +756,15 @@
       <div class="mood-week" id="st-mood"></div>
     </div>
     <div class="card">
-      <div class="cal-header" style="margin-bottom:10px;">
+      <h2 data-i18n="stats_activity"></h2>
+      <div id="st-activity"></div>
+    </div>
+    <div class="card">
+      <div class="cal-header" style="margin-bottom:6px;">
         <h2 data-i18n="stats_habits" style="margin:0;"></h2>
-        <span id="st-habit-range" style="display:flex; gap:6px;"></span>
+        <span id="st-habit-range" style="display:flex; gap:6px; align-items:center;"></span>
       </div>
+      <div class="settings-label" id="st-habit-label" style="text-align:center; display:block; margin-bottom:10px;"></div>
       <div id="st-habits"></div>
     </div>
   </section>
@@ -787,7 +823,7 @@ const I18N = {
     confirm_del: n => `Delete "${n}"?`,
     sub_ph: 'Subtask',
     add_habit: 'Add a Habit', habit_ph: 'Habit (e.g. English vocab, 10 min)', habits: 'My Habits',
-    habit_hint: 'Tap a habit row to check off today. Tap a circle to toggle any of the last 7 days. Set a ⏰ time for a daily reminder (only fires if not yet checked, while the page is open).',
+    habit_hint: 'Tap a habit row to check off today. Tap a circle to toggle any day; use ← → to see past weeks. Set a ⏰ time for a daily reminder (only fires if not yet checked, while the page is open).',
     empty_habits: 'No habits yet', streak: 'streak',
     remind_title: 'Daily reminder (optional)', habit_notif_body: 'Time for your habit!',
     write_entry: 'Write an Entry', entry_ph: 'What happened today, how you felt...', save: 'Save',
@@ -805,6 +841,7 @@ const I18N = {
     stats_rate: 'Completion — last 7 days', stats_pomo_total: '🍅 This week',
     stats_done: 'Tasks Completed — Last 7 Days', stats_pomo: 'Pomodoros — Last 7 Days',
     stats_pri: 'Open Tasks by Priority', stats_mood: 'Mood — Last 7 Days', stats_habits: 'Habits',
+    stats_activity: 'Habit Activity — 12 Weeks',
     range_week: 'Week', range_month: 'Month',
     start: 'Start', pause: 'Pause', reset: 'Reset', focus: 'Focus', brk: 'Break',
     pomo_count: n => `🍅 ${n} today`,
@@ -842,7 +879,7 @@ const I18N = {
     confirm_del: n => `「${n}」を削除しますか?`,
     sub_ph: 'サブタスク',
     add_habit: '習慣を追加', habit_ph: '習慣(例: 英単語10分)', habits: '習慣リスト',
-    habit_hint: '習慣の行をタップすると今日の分をチェックできます。丸をタップすると過去7日の任意の日を切り替え。⏰時刻を設定すると、その時刻に未チェックの場合だけ通知が届きます(ページを開いている間のみ)。',
+    habit_hint: '習慣の行をタップすると今日の分をチェックできます。丸をタップすると任意の日を切り替え、←→で過去の週も見られます。⏰時刻を設定すると、その時刻に未チェックの場合だけ通知が届きます(ページを開いている間のみ)。',
     empty_habits: '習慣はまだありません', streak: '日連続',
     remind_title: '毎日のリマインダー(任意)', habit_notif_body: '習慣の時間です!',
     write_entry: '記録を書く', entry_ph: '今日あったこと、思ったこと…', save: '保存',
@@ -860,6 +897,7 @@ const I18N = {
     stats_rate: '完了率(直近7日)', stats_pomo_total: '🍅 今週の合計',
     stats_done: '完了タスク数(直近7日)', stats_pomo: 'ポモドーロ(直近7日)',
     stats_pri: '未完了タスクの優先度内訳', stats_mood: '気分の推移(直近7日)', stats_habits: '習慣の達成',
+    stats_activity: '習慣アクティビティ(12週)',
     range_week: '週', range_month: '月',
     start: 'スタート', pause: '一時停止', reset: 'リセット', focus: '集中', brk: '休憩',
     pomo_count: n => `🍅 今日 ${n} 回`,
@@ -1068,6 +1106,13 @@ function goEvent(ds) {
   showView('cal');
   openModal(ds);
 }
+function goDiary(ds) {
+  const d = strToDate(ds);
+  dCalYear = d.getFullYear();
+  dCalMonth = d.getMonth();
+  showView('diary');
+  selectDiaryDay(ds);
+}
 
 // ---------- Tasks ----------
 let editingTaskId = null;
@@ -1262,7 +1307,7 @@ function renderTasks() {
   document.getElementById('task-list-done').innerHTML = done.length ? done.map(tk => taskHTML(tk) + subsBlockHTML(tk)).join('') : `<div class="empty">${t('empty_done')}</div>`;
 }
 
-// ---------- Pomodoro (timestamp-based) ----------
+// ---------- Pomodoro (timestamp-based; catches up after the screen was closed) ----------
 let pomoCfg = store.load('pomoCfg', { work: 25, brk: 5 });
 let pomoMode = 'work', pomoLeft = pomoCfg.work * 60, pomoEndAt = null, pomoInterval = null;
 let pomoStat = store.load('pomo', { date: todayStr(), count: 0 });
@@ -1302,7 +1347,7 @@ function pomoReset() {
   pomoSave();
   updatePomoUI();
 }
-function pomoAdvance(notifyUser) {
+function pomoAdvance() {
   if (pomoMode === 'work') {
     pomoStat = { date: todayStr(), count: (pomoStat.date === todayStr() ? pomoStat.count : 0) + 1 };
     store.saveRaw('pomo', pomoStat);
@@ -1311,21 +1356,32 @@ function pomoAdvance(notifyUser) {
     store.saveRaw('pomoHist', hist);
     pomoMode = 'break';
     pomoLeft = pomoCfg.brk * 60;
-    if (notifyUser && 'Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('brk') + '!');
   } else {
     pomoMode = 'work';
     pomoLeft = pomoCfg.work * 60;
-    if (notifyUser && 'Notification' in window && Notification.permission === 'granted') new Notification('🍅 ' + t('focus') + '!');
+  }
+}
+// Advance through however many phases finished while the page was hidden/closed.
+function pomoCatchUp(silent) {
+  if (!pomoEndAt) return;
+  let advanced = false, guard = 0;
+  while (pomoEndAt - Date.now() <= 0 && guard++ < 500) {
+    pomoAdvance();
+    pomoEndAt += pomoLeft * 1000;
+    advanced = true;
+  }
+  pomoLeft = Math.max(0, Math.round((pomoEndAt - Date.now()) / 1000));
+  if (advanced) {
+    if (!silent) {
+      beep();
+      if ('Notification' in window && Notification.permission === 'granted')
+        new Notification('🍅 ' + (pomoMode === 'work' ? t('focus') : t('brk')) + '!');
+    }
+    pomoSave();
   }
 }
 function pomoTick() {
-  if (pomoEndAt) pomoLeft = Math.max(0, Math.round((pomoEndAt - Date.now()) / 1000));
-  if (pomoLeft <= 0) {
-    beep();
-    pomoAdvance(true);
-    pomoEndAt = Date.now() + pomoLeft * 1000;
-    pomoSave();
-  }
+  pomoCatchUp(false);
   updatePomoUI();
 }
 function pomoRestore() {
@@ -1333,16 +1389,10 @@ function pomoRestore() {
   if (!r) return;
   pomoMode = r.mode || 'work';
   if (r.running && r.endAt) {
-    const rem = Math.round((r.endAt - Date.now()) / 1000);
-    if (rem > 0) {
-      pomoLeft = rem;
-      pomoEndAt = r.endAt;
-      pomoInterval = setInterval(pomoTick, 500);
-    } else {
-      pomoAdvance(false);
-      pomoEndAt = null;
-      pomoSave();
-    }
+    pomoEndAt = r.endAt;
+    pomoLeft = Math.max(0, Math.round((pomoEndAt - Date.now()) / 1000));
+    pomoInterval = setInterval(pomoTick, 500);
+    pomoCatchUp(true); // catch up phases missed while closed, quietly
   } else if (typeof r.left === 'number' && r.left > 0) {
     pomoLeft = r.left;
   }
@@ -1807,6 +1857,11 @@ function renderProj() {
 }
 
 // ---------- Habits ----------
+let habitOffset = 0; // 0 = this week; 1 = last week; ...
+function habitMove(d) {
+  habitOffset = d === 0 ? 0 : Math.max(0, habitOffset + d);
+  renderHabits();
+}
 function addHabit() {
   const name = document.getElementById('habit-name').value.trim();
   if (!name) return;
@@ -1853,9 +1908,12 @@ function habitStreak(h) {
   return streak;
 }
 function lastNDays(n) {
+  return lastNDaysFrom(n, 0);
+}
+function lastNDaysFrom(n, endOffsetDays) {
   const arr = [];
   const d = new Date();
-  d.setDate(d.getDate() - (n - 1));
+  d.setDate(d.getDate() - endOffsetDays - (n - 1));
   for (let i = 0; i < n; i++) {
     arr.push(dateToStr(d));
     d.setDate(d.getDate() + 1);
@@ -1863,8 +1921,10 @@ function lastNDays(n) {
   return arr;
 }
 function renderHabits() {
-  const days = lastNDays(7);
+  const days = lastNDaysFrom(7, habitOffset * 7);
   const today = todayStr();
+  const label = document.getElementById('habit-range-label');
+  if (label) label.textContent = `${fmtDate(days[0])} – ${fmtDate(days[6])}`;
   document.getElementById('habit-list').innerHTML = habits.length ? habits.map(h => {
     const streak = habitStreak(h);
     return `<div class="habit-item" onclick="habitRowTap(event, '${h.id}')">
@@ -1965,9 +2025,14 @@ function renderDiary() {
 }
 
 // ---------- Stats ----------
-let statsHabitRange = 7;
+let statsHabitRange = 7, statsHabitOffset = 0;
 function setStatsHabitRange(n) {
   statsHabitRange = n;
+  statsHabitOffset = 0;
+  renderStats();
+}
+function stHabitMove(d) {
+  statsHabitOffset = Math.max(0, statsHabitOffset + d);
   renderStats();
 }
 function barsHTML(days, counts) {
@@ -1980,6 +2045,30 @@ function barsHTML(days, counts) {
       <span class="chart-label">${t('dows')[dt.getDay()]}</span>
     </div>`;
   }).join('');
+}
+function activityHTML() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(today.getDate() - 83);
+  start.setDate(start.getDate() - start.getDay()); // back to Sunday
+  const nHabits = Math.max(habits.length, 1);
+  const cells = [];
+  const d = new Date(start);
+  let guard = 0;
+  while ((d <= today || d.getDay() !== 0) && guard++ < 130) {
+    const ds = dateToStr(d);
+    if (d > today) {
+      cells.push('<span class="act-cell future"></span>');
+    } else {
+      const n = habits.reduce((s, h) => s + (h.dates.includes(ds) ? 1 : 0), 0);
+      const r = n / nHabits;
+      const lv = n === 0 ? '' : r <= .25 ? ' l1' : r <= .5 ? ' l2' : r <= .75 ? ' l3' : ' l4';
+      cells.push(`<span class="act-cell${lv}" title="${ds}: ${n}"></span>`);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return `<div class="act-grid">${cells.join('')}</div>`;
 }
 function renderStats() {
   const el = document.getElementById('st-done');
@@ -2013,12 +2102,19 @@ function renderStats() {
   document.getElementById('st-mood').innerHTML = days.map(ds => {
     const entry = diary.find(d => d.date === ds);
     const dt = strToDate(ds);
-    return `<div class="mood-week-day"><div class="emo">${entry ? entry.mood : '·'}</div><div class="lbl">${t('dows')[dt.getDay()]}</div></div>`;
+    return `<div class="mood-week-day" onclick="goDiary('${ds}')"><div class="emo">${entry ? entry.mood : '·'}</div><div class="lbl">${t('dows')[dt.getDay()]}</div></div>`;
   }).join('');
 
-  document.getElementById('st-habit-range').innerHTML = [7, 30].map(n =>
-    `<button class="chip-btn ${statsHabitRange === n ? 'on' : ''}" onclick="setStatsHabitRange(${n})">${t(n === 7 ? 'range_week' : 'range_month')}</button>`).join('');
-  const hdays = lastNDays(statsHabitRange);
+  document.getElementById('st-activity').innerHTML = activityHTML();
+
+  document.getElementById('st-habit-range').innerHTML =
+    `<button class="chip-btn" onclick="stHabitMove(1)">←</button>
+     <button class="chip-btn" onclick="stHabitMove(-1)">→</button>` +
+    [7, 30].map(n =>
+      `<button class="chip-btn ${statsHabitRange === n ? 'on' : ''}" onclick="setStatsHabitRange(${n})">${t(n === 7 ? 'range_week' : 'range_month')}</button>`).join('');
+  const hdays = lastNDaysFrom(statsHabitRange, statsHabitOffset * statsHabitRange);
+  const hlabel = document.getElementById('st-habit-label');
+  if (hlabel) hlabel.textContent = `${fmtDate(hdays[0])} – ${fmtDate(hdays[hdays.length - 1])}`;
   document.getElementById('st-habits').innerHTML = habits.length ? habits.map(h => {
     const n = hdays.filter(ds => h.dates.includes(ds)).length;
     return `<div class="stat-row">
