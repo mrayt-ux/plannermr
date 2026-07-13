@@ -537,6 +537,10 @@
       <div id="dash-events-later" class="tappable" style="display:none;"></div>
     </div>
     <div class="card" onclick="dashCardTap(event)" style="cursor:pointer;">
+      <h2 data-i18n="important"></h2>
+      <div id="dash-important" class="tappable"></div>
+    </div>
+    <div class="card" onclick="dashCardTap(event)" style="cursor:pointer;">
       <h2 data-i18n="upcoming"></h2>
       <div id="dash-tasks" class="tappable"></div>
     </div>
@@ -787,6 +791,7 @@ const I18N = {
     stat_today: 'Tasks due today', stat_open: 'Open tasks',
     week_events: 'This Week', show_later: 'Show later events', hide_later: 'Hide later events',
     upcoming: 'Upcoming Tasks', recent_done: 'Recently Completed',
+    important: '⭐ High Priority', empty_important: 'No high-priority tasks',
     add_task: 'Add a Task', task_name_ph: 'Task name', tag_ph: 'Tag', add: 'Add',
     priority_high: 'Priority: High', priority_mid: 'Priority: Medium', priority_low: 'Priority: Low',
     pri_high: 'High', pri_mid: 'Med', pri_low: 'Low',
@@ -842,6 +847,7 @@ const I18N = {
     stat_today: '今日締切のタスク', stat_open: '未完了タスク',
     week_events: '1週間の予定', show_later: 'それ以降の予定を表示', hide_later: 'それ以降の予定を隠す',
     upcoming: '期限が近いタスク', recent_done: '最近完了したタスク',
+    important: '⭐ 重要なタスク', empty_important: '優先度「高」のタスクはありません',
     add_task: 'タスクを追加', task_name_ph: 'タスク名', tag_ph: 'タグ', add: '追加',
     priority_high: '優先度: 高', priority_mid: '優先度: 中', priority_low: '優先度: 低',
     pri_high: '高', pri_mid: '中', pri_low: '低',
@@ -2119,6 +2125,11 @@ function renderDash() {
   document.getElementById('btn-later').style.display = laterEvents.length ? '' : 'none';
   document.getElementById('btn-later').textContent = showLater ? t('hide_later') : t('show_later');
   if (!laterEvents.length) { showLater = false; document.getElementById('dash-events-later').style.display = 'none'; }
+
+  const important = open.filter(t => t.pri === 'high').sort((a,b) => ((a.due||'9999')+(a.time||'99')) < ((b.due||'9999')+(b.time||'99')) ? -1 : 1).slice(0, 5);
+  document.getElementById('dash-important').innerHTML = important.length
+    ? important.map(tk => taskHTML(tk, true)).join('')
+    : `<div class="empty">${t('empty_important')}</div>`;
 
   const upcoming = open.filter(t => t.due).sort((a,b) => ((a.due)+(a.time||'')) < ((b.due)+(b.time||'')) ? -1 : 1).slice(0, 5);
   document.getElementById('dash-tasks').innerHTML = upcoming.length
