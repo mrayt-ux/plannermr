@@ -536,11 +536,11 @@
       </div>
       <div id="dash-events-later" class="tappable" style="display:none;"></div>
     </div>
-    <div class="card">
+    <div class="card" onclick="dashCardTap(event)" style="cursor:pointer;">
       <h2 data-i18n="upcoming"></h2>
       <div id="dash-tasks" class="tappable"></div>
     </div>
-    <div class="card">
+    <div class="card" onclick="dashCardTap(event)" style="cursor:pointer;">
       <h2 data-i18n="recent_done"></h2>
       <div id="dash-done" class="tappable"></div>
     </div>
@@ -1072,6 +1072,10 @@ function dashRowTap(ev) {
   if (ev.target.closest('button') || ev.target.closest('input')) return;
   showView('tasks');
 }
+function dashCardTap(ev) {
+  if (ev.target.closest('button') || ev.target.closest('input')) return;
+  showView('tasks');
+}
 function goEvent(ds) {
   const d = strToDate(ds);
   calYear = d.getFullYear();
@@ -1334,7 +1338,6 @@ function pomoAdvance() {
     pomoLeft = pomoCfg.work * 60;
   }
 }
-// Advance through however many phases finished while the page was hidden/closed.
 function pomoCatchUp(silent) {
   if (!pomoEndAt) return;
   let advanced = false, guard = 0;
