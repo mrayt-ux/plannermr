@@ -40,13 +40,6 @@
       <div class="dash-sum" id="dash-sum"></div>
     </div>
     <section class="hero" id="dash-hero" aria-live="polite"></section>
-    <div class="card quick-card">
-      <div class="quick-add">
-        <input type="text" id="quick-title" data-i18n-ph="quick_ph" onkeydown="if(event.key==='Enter')quickAdd()">
-        <button class="primary" onclick="quickAdd()" data-i18n="add"></button>
-      </div>
-      <div class="due-chips" id="quick-due"></div>
-    </div>
     <div class="card" id="dash-habits-card">
       <h2 data-i18n="today_habits"></h2>
       <div class="habit-chips" id="dash-habits"></div>
@@ -108,7 +101,7 @@
       </div>
       <div class="due-row">
         <div class="due-chips" id="task-due-chips"></div>
-        <input type="date" id="task-due" onchange="renderDueChips()" aria-label="due">
+        <input type="hidden" id="task-due">
       </div>
       <details class="more" id="task-more">
         <summary data-i18n="more_opts"></summary>
@@ -334,19 +327,16 @@
       <button class="icon-btn modal-x" onclick="closeTaskSheet()" data-i18n-aria="close">✕</button>
     </div>
     <textarea id="ts-title" class="ts-title" rows="1" maxlength="200" data-i18n-aria="task_name_ph"></textarea>
-    <div class="ts-label" data-i18n="due_label"></div>
-    <div class="due-row">
-      <div class="due-chips" id="ts-due-chips"></div>
-      <input type="date" id="ts-due" onchange="renderSheetDueChips()" aria-label="due">
-    </div>
-    <div class="ts-label" data-i18n="subtasks_label"></div>
-    <div id="ts-subs"></div>
-    <div class="sub-form" style="margin-left:0;">
+    <div class="due-chips" id="ts-due-chips"></div>
+    <input type="hidden" id="ts-due">
+    <div id="ts-subs" class="ts-subs"></div>
+    <div class="sub-form" id="ts-sub-form" style="margin-left:0;" hidden>
       <input type="text" id="ts-sub-input" data-i18n-ph="sub_ph" onkeydown="if(event.key==='Enter')sheetAddSub()">
       <button class="ghost" onclick="sheetAddSub()" data-i18n="add"></button>
     </div>
+    <button class="link-btn" id="ts-sub-open" onclick="openSheetSubForm()" data-i18n="add_sub"></button>
     <details class="more" id="ts-more">
-      <summary data-i18n="more_opts"></summary>
+      <summary id="ts-more-sum"></summary>
       <div class="task-form" style="margin-top:10px;">
         <input type="text" id="ts-tag" data-i18n-ph="tag_ph" style="flex:0 1 130px; min-width:90px;">
         <span class="time-range">
@@ -364,7 +354,7 @@
       </div>
     </details>
     <div class="form-actions" style="justify-content:space-between; margin-top:16px;">
-      <button class="ghost danger" onclick="sheetDelete()" data-i18n="del_label"></button>
+      <button class="link-btn danger" onclick="sheetDelete()" data-i18n="del_task"></button>
       <button class="primary" onclick="saveTaskSheet()" data-i18n="save"></button>
     </div>
   </div>

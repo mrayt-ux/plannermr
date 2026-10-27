@@ -59,7 +59,7 @@ const I18N = {
     del_one: 'This day only', del_after: 'This & later',
     repeat_none: 'No repeat', repeat_daily: 'Daily', repeat_weekly_opt: 'Weekly', repeat_monthly: 'Monthly', repeat_until: 'Until',
     del_label: 'Delete', prev: 'Previous', next: 'Next',
-    nav_tasks_short: 'Tasks', due_label: 'Due', subtasks_label: 'Subtasks', mark_done: '○ Mark done', mark_undone: '✓ Done — tap to undo', quick_ph: 'Add a task…', today_habits: "Today's Habits", data_title: 'Data & Sync',
+    nav_tasks_short: 'Tasks', pick_date: '📅 Date', add_sub: '+ Subtask', del_task: 'Delete task', details: 'Details', mark_done: '○ Mark done', mark_undone: '✓ Done — tap to undo', today_habits: "Today's Habits", data_title: 'Data & Sync',
     more_opts: 'More options (tag, time, priority, reminder)',
     due_today: 'Today', due_tomorrow: 'Tomorrow', due_week: 'This week', due_next: 'Next week', due_none: 'No date',
     b_overdue: 'Overdue', b_today: 'Today', b_soon: 'Within 3 days', b_week: 'Within 7 days', b_later: 'Later', b_none: 'No due date',
@@ -67,7 +67,7 @@ const I18N = {
     more_tasks: (a, b) => `${a ? 'Later: ' + a : ''}${a && b ? ' · ' : ''}${b ? 'No date: ' + b : ''} →`,
     all_tasks: 'All tasks →',
     hero_overdue: 'Past due', hero_today: 'Due today', hero_event: 'Coming up', hero_next: 'Next deadline',
-    hero_none: 'Nothing due today 🎉', hero_none_sub: 'Add a task below, or enjoy the free time.',
+    hero_none: 'Nothing due today 🎉', hero_none_sub: 'Add tasks from the Tasks tab.',
     hero_done: 'Mark done', hero_open: 'Open', hero_edit: 'Edit event', hero_now: 'Happening now', hero_in: m => m >= 60 ? `in ${Math.floor(m/60)}h ${m%60}m` : `in ${m} min`, hero_then: 'Next task', hero_more: n => `+${n} more due today`,
     completed: s => `Completed "${s}"`,
     sum: (o, e) => `${o} open task${o === 1 ? '' : 's'} · ${e} event${e === 1 ? '' : 's'} today`,
@@ -131,7 +131,7 @@ const I18N = {
     del_one: 'この日だけ削除', del_after: 'この日以降を削除',
     repeat_none: '繰り返さない', repeat_daily: '毎日', repeat_weekly_opt: '毎週', repeat_monthly: '毎月', repeat_until: '終了日',
     del_label: '削除', prev: '前へ', next: '次へ',
-    nav_tasks_short: 'タスク', due_label: '期限', subtasks_label: 'サブタスク', mark_done: '○ 完了にする', mark_undone: '✓ 完了済み(タップで戻す)', quick_ph: 'タスクを追加…', today_habits: '今日の習慣', data_title: 'データ・同期',
+    nav_tasks_short: 'タスク', pick_date: '📅 日付', add_sub: '＋ サブタスク', del_task: 'このタスクを削除', details: '詳細', mark_done: '○ 完了にする', mark_undone: '✓ 完了済み(タップで戻す)', today_habits: '今日の習慣', data_title: 'データ・同期',
     more_opts: '詳細(タグ・時刻・優先度・通知)',
     due_today: '今日', due_tomorrow: '明日', due_week: '今週中', due_next: '来週', due_none: '期限なし',
     b_overdue: '期限超過', b_today: '今日', b_soon: '3日以内', b_week: '7日以内', b_later: 'それ以降', b_none: '期限なし',
@@ -139,7 +139,7 @@ const I18N = {
     more_tasks: (a, b) => `${a ? 'それ以降 ' + a + '件' : ''}${a && b ? '・' : ''}${b ? '期限なし ' + b + '件' : ''} →`,
     all_tasks: 'すべてのタスク →',
     hero_overdue: '期限が過ぎています', hero_today: '今日が締切', hero_event: 'もうすぐの予定', hero_next: '次の締切',
-    hero_none: '今日が締切のものはありません 🎉', hero_none_sub: '下の欄からタスクを追加できます。',
+    hero_none: '今日が締切のものはありません 🎉', hero_none_sub: 'タスクは「タスク」タブから追加できます。',
     hero_done: '完了にする', hero_open: '開く', hero_edit: '予定を編集', hero_now: '開催中', hero_in: m => m >= 60 ? `あと${Math.floor(m/60)}時間${m%60 ? m%60 + '分' : ''}` : `あと${m}分`, hero_then: '次のタスク', hero_more: n => `今日締切がほかに ${n} 件`,
     completed: s => `「${s}」を完了しました`,
     sum: (o, e) => `未完了 ${o} 件・今日の予定 ${e} 件`,
@@ -523,25 +523,18 @@ function dueChoices() {
   const dow = new Date().getDay();
   return [['due_today', todayStr()], ['due_tomorrow', addDaysStr(1)], ['due_week', addDaysStr((7 - dow) % 7)], ['due_next', addDaysStr(7)], ['due_none', '']];
 }
+// Quick due buttons plus a "date" chip that opens the date picker (the picker input sits invisibly on top of it).
 function dueChipsHTML(current, fn) {
-  return dueChoices().map(([k, v]) => `<button type="button" class="chip-btn ${current === v ? 'on' : ''}" onclick="${fn}('${v}')">${t(k)}</button>`).join('');
+  const choices = dueChoices();
+  const custom = current && !choices.some(([, v]) => v === current);
+  return choices.map(([k, v]) => `<button type="button" class="chip-btn ${current === v ? 'on' : ''}" onclick="${fn}('${v}')">${t(k)}</button>`).join('') +
+    `<label class="chip-btn date-chip ${custom ? 'on' : ''}">${custom ? '📅 ' + fmtDate(current) : t('pick_date')}<input type="date" value="${current || ''}" onchange="${fn}(this.value)" aria-label="${t('pick_date')}"></label>`;
 }
 function setTaskDue(v) { document.getElementById('task-due').value = v; renderDueChips(); }
 function renderDueChips() {
   document.getElementById('task-due-chips').innerHTML = dueChipsHTML(document.getElementById('task-due').value, 'setTaskDue');
 }
-let quickDue = todayStr();
-function setQuickDue(v) { quickDue = v; renderQuickDue(); }
-function renderQuickDue() { document.getElementById('quick-due').innerHTML = dueChipsHTML(quickDue, 'setQuickDue'); }
-function quickAdd() {
-  const el = document.getElementById('quick-title');
-  const title = el.value.trim();
-  if (!title) { el.focus(); return; }
-  tasks.push({ id: uid(), title, tag: '', due: quickDue, time: '', timeEnd: '', pri: 'mid', notify: true, notifyAt: '', subs: [], done: false, doneAt: null });
-  store.save('tasks', tasks);
-  el.value = '';
-  renderAll();
-}
+
 
 // subtasks
 function showSubForm(id) {
@@ -661,8 +654,10 @@ function openTaskSheet(id) {
   document.getElementById('ts-pri').value = tk.pri || 'mid';
   document.getElementById('ts-notify').checked = tk.notify !== false;
   document.getElementById('ts-notify-at').value = tk.notifyAt || '';
-  document.getElementById('ts-more').open = !!(tk.tag || tk.time || (tk.pri && tk.pri !== 'mid') || tk.notify === false || tk.notifyAt);
+  document.getElementById('ts-more').open = false;
   document.getElementById('ts-sub-input').value = '';
+  document.getElementById('ts-sub-form').hidden = true;
+  document.getElementById('ts-sub-open').hidden = false;
   renderSheet();
   document.getElementById('task-sheet-bg').classList.add('open');
   fitSheetTitle();
@@ -674,6 +669,14 @@ function renderSheet() {
   btn.textContent = tk.done ? t('mark_undone') : t('mark_done');
   btn.classList.toggle('on', !!tk.done);
   renderSheetDueChips();
+  // Summary of what is set under "Details", so it can stay folded.
+  const bits = [
+    tk.tag ? '#' + esc(tk.tag) : '',
+    timeStr(tk) ? '🕐 ' + timeStr(tk) : '',
+    tk.pri === 'high' ? t('pri_high') : tk.pri === 'low' ? t('pri_low') : '',
+    tk.notify === false ? '🔕' : (tk.notifyAt ? '🔔' + tk.notifyAt : '')
+  ].filter(Boolean);
+  document.getElementById('ts-more-sum').innerHTML = t('details') + (bits.length ? `<span class="ts-more-bits">${bits.join(' · ')}</span>` : '');
   document.getElementById('ts-subs').innerHTML = (tk.subs || []).map(sb => `<div class="sub-item ${sb.done ? 'done' : ''}" style="padding-left:4px;">
     <input type="checkbox" ${sb.done ? 'checked' : ''} onchange="sheetToggleSub('${sb.id}')" aria-label="${esc(sb.title)}">
     <span class="sub-title">${esc(sb.title)}</span>
@@ -721,6 +724,11 @@ function sheetDelete() {
   const id = sheetTaskId;
   closeTaskSheet();
   delTask(id);
+}
+function openSheetSubForm() {
+  document.getElementById('ts-sub-form').hidden = false;
+  document.getElementById('ts-sub-open').hidden = true;
+  document.getElementById('ts-sub-input').focus();
 }
 function sheetAddSub() {
   const tk = sheetTask();
@@ -1844,7 +1852,6 @@ function renderDash() {
   document.getElementById('dash-date').textContent = t('dateHead')(today);
   document.getElementById('dash-sum').textContent = t('sum')(open.length, eventsOn(today).length);
   renderHero();
-  renderQuickDue();
   renderDashHabits();
 
   // Tasks due within a week, grouped; later / undated ones are just counted.

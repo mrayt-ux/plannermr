@@ -675,3 +675,20 @@ html.dark button.ghost.danger { color: #e8a394; border-color: #4a2b24; }
   .sheet-grip { display: block; width: 40px; height: 4px; border-radius: 99px; background: var(--border); margin: 0 auto 10px; }
 }
 @keyframes sheetup { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+
+/* ===== Compact sheet ===== */
+.sheet .due-chips { margin-top: 8px; }
+.date-chip { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
+.date-chip input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; padding: 0; border: none; }
+.ts-subs { margin-top: 12px; }
+.ts-subs:empty { display: none; }
+.link-btn {
+  background: none; border: none; padding: 8px 2px; font-family: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--accent-dark); cursor: pointer;
+}
+.link-btn.danger { color: #b3543f; }
+html.dark .link-btn.danger { color: #e8a394; }
+.sheet .more { margin-top: 6px; }
+.ts-more-bits { font-weight: 500; margin-left: 8px; color: var(--text); }
+
+[hidden] { display: none !important; }
