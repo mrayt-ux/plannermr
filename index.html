@@ -290,7 +290,10 @@
 <!-- Day modal -->
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <h3 id="modal-date"></h3>
+    <div class="modal-head">
+      <h3 id="modal-date"></h3>
+      <button class="icon-btn modal-x" onclick="closeModal()" data-i18n-aria="close">✕</button>
+    </div>
     <div class="modal-events" id="modal-events"></div>
     <div class="row">
       <input type="text" id="event-title" data-i18n-ph="event_ph" onkeydown="if(event.key==='Enter')addEvent()">
@@ -318,7 +321,7 @@
     </div>
     <button class="primary" id="btn-event-add" onclick="addEvent()"></button>
     <button class="ghost" id="btn-event-cancel" onclick="cancelEventEdit()" style="display:none;"></button>
-    <div class="modal-close"><button class="small" onclick="closeModal()" data-i18n="close"></button></div>
+    <div class="modal-close"><button class="ghost" onclick="closeModal()" data-i18n="close"></button></div>
   </div>
 </div>
 
