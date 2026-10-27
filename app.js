@@ -55,12 +55,24 @@ const I18N = {
     fmtDateFull: s => { const [y,m,d] = s.split('-').map(Number); return `${I18N.en.monthsFull[m-1]} ${d}, ${y}`; },
     calTitle: (y,m) => `${I18N.en.monthsFull[m]} ${y}`,
     today_word: 'Today',
-    diary_exists: d => `There is already an entry for ${d}.\nOK = add this below it / Cancel = choose replace or stop`,
-    diary_replace: 'Replace the existing entry with this text?',
     import_confirm: 'Restoring replaces ALL current data (tasks, events, habits, diary, goals) with the backup. Continue?',
     del_one: 'This day only', del_after: 'This & later',
     repeat_none: 'No repeat', repeat_daily: 'Daily', repeat_weekly_opt: 'Weekly', repeat_monthly: 'Monthly', repeat_until: 'Until',
-    del_label: 'Delete', prev: 'Previous', next: 'Next'
+    del_label: 'Delete', prev: 'Previous', next: 'Next',
+    nav_tasks_short: 'Tasks', quick_ph: 'Add a task…', today_habits: "Today's Habits", data_title: 'Data & Sync',
+    more_opts: 'More options (tag, time, priority, reminder)',
+    due_today: 'Today', due_tomorrow: 'Tomorrow', due_week: 'This week', due_next: 'Next week', due_none: 'No date',
+    b_overdue: 'Overdue', b_today: 'Today', b_soon: 'Within 3 days', b_week: 'Within 7 days', b_later: 'Later', b_none: 'No due date',
+    rel: n => n < 0 ? `${-n}d overdue` : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`,
+    more_tasks: (a, b) => `${a ? 'Later: ' + a : ''}${a && b ? ' · ' : ''}${b ? 'No date: ' + b : ''} →`,
+    all_tasks: 'All tasks →',
+    hero_overdue: 'Past due', hero_today: 'Due today', hero_event: 'Coming up', hero_next: 'Next deadline',
+    hero_none: 'Nothing due today 🎉', hero_none_sub: 'Add a task below, or enjoy the free time.',
+    hero_done: 'Mark done', hero_open: 'Open', hero_more: n => `+${n} more due today`,
+    completed: s => `Completed "${s}"`,
+    sum: (o, e) => `${o} open task${o === 1 ? '' : 's'} · ${e} event${e === 1 ? '' : 's'} today`,
+    dateHead: s => I18N.en.fmtDateFull(s),
+    diary_for: d => `Diary — ${d}`, diary_saved: 'Saved ✓'
   },
   ja: {
     nav_home: 'ホーム', nav_tasks: 'タスク・進捗', nav_cal: 'カレンダー', nav_habits: '習慣', nav_diary: '日記',
@@ -115,12 +127,24 @@ const I18N = {
     fmtDateFull: s => { const [y,m,d] = s.split('-').map(Number); return `${y}年${m}月${d}日`; },
     calTitle: (y,m) => `${y}年${m + 1}月`,
     today_word: '今日',
-    diary_exists: d => `${d}にはすでに記録があります。\nOK = 下に追記する / キャンセル = 置き換えるか中止するか選ぶ`,
-    diary_replace: '既存の記録をこの内容で置き換えますか?',
     import_confirm: '復元すると、現在のデータ(タスク・予定・習慣・日記・目標)がすべてバックアップの内容に置き換わります。続けますか?',
     del_one: 'この日だけ削除', del_after: 'この日以降を削除',
     repeat_none: '繰り返さない', repeat_daily: '毎日', repeat_weekly_opt: '毎週', repeat_monthly: '毎月', repeat_until: '終了日',
-    del_label: '削除', prev: '前へ', next: '次へ'
+    del_label: '削除', prev: '前へ', next: '次へ',
+    nav_tasks_short: 'タスク', quick_ph: 'タスクを追加…', today_habits: '今日の習慣', data_title: 'データ・同期',
+    more_opts: '詳細(タグ・時刻・優先度・通知)',
+    due_today: '今日', due_tomorrow: '明日', due_week: '今週中', due_next: '来週', due_none: '期限なし',
+    b_overdue: '期限超過', b_today: '今日', b_soon: '3日以内', b_week: '7日以内', b_later: 'それ以降', b_none: '期限なし',
+    rel: n => n < 0 ? `${-n}日超過` : n === 0 ? '今日' : n === 1 ? '明日' : `あと${n}日`,
+    more_tasks: (a, b) => `${a ? 'それ以降 ' + a + '件' : ''}${a && b ? '・' : ''}${b ? '期限なし ' + b + '件' : ''} →`,
+    all_tasks: 'すべてのタスク →',
+    hero_overdue: '期限が過ぎています', hero_today: '今日が締切', hero_event: 'もうすぐの予定', hero_next: '次の締切',
+    hero_none: '今日が締切のものはありません 🎉', hero_none_sub: '下の欄からタスクを追加できます。',
+    hero_done: '完了にする', hero_open: '開く', hero_more: n => `今日締切がほかに ${n} 件`,
+    completed: s => `「${s}」を完了しました`,
+    sum: (o, e) => `未完了 ${o} 件・今日の予定 ${e} 件`,
+    dateHead: s => { const [y,m,d] = s.split('-').map(Number); return `${m}月${d}日(${I18N.ja.dows[new Date(y,m-1,d).getDay()]})`; },
+    diary_for: d => `${d}の日記`, diary_saved: '保存しました ✓'
   }
 };
 let lang = localStorage.getItem('planner_lang') || ((navigator.language || '').startsWith('ja') ? 'ja' : 'en');
@@ -129,6 +153,7 @@ const t = key => I18N[lang][key];
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
   document.getElementById('btn-lang').textContent = lang === 'en' ? '🌐 日本語' : '🌐 English';
   document.getElementById('btn-task-add').textContent = editingTaskId ? t('save') : t('add');
   document.getElementById('btn-task-cancel').textContent = t('cancel');
@@ -141,6 +166,7 @@ function applyI18n() {
   renderSoundChips();
   renderThemeChips();
   renderSyncUI();
+  if (document.getElementById('task-due-chips')) renderDueChips();
 }
 function toggleLang() {
   lang = lang === 'en' ? 'ja' : 'en';
@@ -381,14 +407,6 @@ function showView(v) {
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('nav button').forEach(btn => { btn.onclick = () => showView(btn.dataset.view); });
-function dashRowTap(ev) {
-  if (ev.target.closest('button') || ev.target.closest('input')) return;
-  showView('tasks');
-}
-function dashCardTap(ev) {
-  if (ev.target.closest('button') || ev.target.closest('input')) return;
-  showView('tasks');
-}
 function goEvent(ds) {
   const d = strToDate(ds);
   calYear = d.getFullYear();
@@ -442,7 +460,9 @@ function editTask(id) {
   document.getElementById('task-pri').value = tk.pri || 'mid';
   document.getElementById('task-notify').checked = tk.notify !== false;
   document.getElementById('task-notify-at').value = tk.notifyAt || '';
+  document.getElementById('task-more').open = !!(tk.tag || tk.time || tk.pri !== 'mid' || tk.notify === false || tk.notifyAt);
   editingTaskId = id;
+  renderDueChips();
   document.getElementById('btn-task-add').textContent = t('save');
   document.getElementById('btn-task-cancel').style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -457,13 +477,65 @@ function cancelTaskEdit() {
   document.getElementById('task-time-end').value = '';
   document.getElementById('task-notify').checked = true;
   document.getElementById('task-notify-at').value = '';
+  document.getElementById('task-pri').value = 'mid';
+  document.getElementById('task-more').open = false;
+  renderDueChips();
   document.getElementById('btn-task-add').textContent = t('add');
   document.getElementById('btn-task-cancel').style.display = 'none';
 }
 function toggleTask(id) {
   const tk = tasks.find(t => t.id === id);
-  if (tk) { tk.done = !tk.done; tk.doneAt = tk.done ? Date.now() : null; }
+  if (!tk) return;
+  tk.done = !tk.done;
+  tk.doneAt = tk.done ? Date.now() : null;
   store.save('tasks', tasks);
+  renderAll();
+  if (tk.done) {
+    const label = tk.title.length > 14 ? tk.title.slice(0, 14) + '…' : tk.title;
+    undoFn = () => { const t2 = tasks.find(x => x.id === id); if (t2) { t2.done = false; t2.doneAt = null; store.save('tasks', tasks); } };
+    showToast(t('completed')(label));
+  }
+}
+
+// ---------- Due-date helpers ----------
+const daysUntil = ds => Math.round((strToDate(ds) - strToDate(todayStr())) / 86400000);
+const addDaysStr = n => { const d = new Date(); d.setDate(d.getDate() + n); return dateToStr(d); };
+function bucketOf(tk) {
+  if (!tk.due) return 'none';
+  const n = daysUntil(tk.due);
+  return n < 0 ? 'overdue' : n === 0 ? 'today' : n <= 3 ? 'soon' : n <= 7 ? 'week' : 'later';
+}
+const BUCKETS = ['overdue', 'today', 'soon', 'week', 'later', 'none'];
+const sortByDue = (a, b) => ((a.due || '9999') + (a.time || '99')) < ((b.due || '9999') + (b.time || '99')) ? -1 : 1;
+function bucketsHTML(list, rowFn, only) {
+  return BUCKETS.filter(b => !only || only.includes(b)).map(b => {
+    const items = list.filter(tk => bucketOf(tk) === b).sort(sortByDue);
+    if (!items.length) return '';
+    return `<div class="bucket-head ${b}">${t('b_' + b)}<span>${items.length}</span></div>` + items.map(rowFn).join('');
+  }).join('');
+}
+// Quick due choices: today, tomorrow, this Sunday, +7 days, none.
+function dueChoices() {
+  const dow = new Date().getDay();
+  return [['due_today', todayStr()], ['due_tomorrow', addDaysStr(1)], ['due_week', addDaysStr((7 - dow) % 7)], ['due_next', addDaysStr(7)], ['due_none', '']];
+}
+function dueChipsHTML(current, fn) {
+  return dueChoices().map(([k, v]) => `<button type="button" class="chip-btn ${current === v ? 'on' : ''}" onclick="${fn}('${v}')">${t(k)}</button>`).join('');
+}
+function setTaskDue(v) { document.getElementById('task-due').value = v; renderDueChips(); }
+function renderDueChips() {
+  document.getElementById('task-due-chips').innerHTML = dueChipsHTML(document.getElementById('task-due').value, 'setTaskDue');
+}
+let quickDue = todayStr();
+function setQuickDue(v) { quickDue = v; renderQuickDue(); }
+function renderQuickDue() { document.getElementById('quick-due').innerHTML = dueChipsHTML(quickDue, 'setQuickDue'); }
+function quickAdd() {
+  const el = document.getElementById('quick-title');
+  const title = el.value.trim();
+  if (!title) { el.focus(); return; }
+  tasks.push({ id: uid(), title, tag: '', due: quickDue, time: '', timeEnd: '', pri: 'mid', notify: true, notifyAt: '', subs: [], done: false, doneAt: null });
+  store.save('tasks', tasks);
+  el.value = '';
   renderAll();
 }
 
@@ -570,20 +642,27 @@ function taskRowTap(ev, id) {
   editTask(id);
 }
 function taskHTML(tk, dashTap) {
-  const overdue = tk.due && !tk.done && tk.due < todayStr();
-  const priKey = { high: 'pri_high', mid: 'pri_mid', low: 'pri_low' }[tk.pri];
-  const rowClick = dashTap ? 'dashRowTap(event)' : `taskRowTap(event,'${tk.id}')`;
+  const n = tk.due ? daysUntil(tk.due) : null;
+  const late = tk.due && !tk.done && n < 0;
   const subs = tk.subs || [];
-  return `<div class="task-item ${tk.done ? 'done' : ''}" onclick="${rowClick}">
-    <input type="checkbox" ${tk.done ? 'checked' : ''} onchange="toggleTask('${tk.id}')">
-    <span class="task-title">${esc(tk.title)}</span>
-    ${subs.length ? `<span class="tag-chip">☑ ${subs.filter(s => s.done).length}/${subs.length}</span>` : ''}
-    ${tk.notify === false ? '<span class="mute-mark">🔕</span>' : (tk.notifyAt ? `<span class="mute-mark">🔔${tk.notifyAt}</span>` : '')}
-    ${tk.tag ? `<span class="tag-chip">#${esc(tk.tag)}</span>` : ''}
-    <span class="badge ${tk.pri}">${t(priKey)}</span>
-    ${dueTimeStr(tk) ? `<span class="task-due ${overdue ? 'overdue' : ''}">${dueTimeStr(tk)}</span>` : ''}
-    ${!dashTap ? `<button class="small edit" onclick="showSubForm('${tk.id}')">＋</button>` : ''}
-    <button class="small" aria-label="${t('del_label')}" onclick="delTask('${tk.id}')">✕</button>
+  const meta = [
+    tk.pri === 'high' ? `<span class="badge high">${t('pri_high')}</span>` : tk.pri === 'low' ? `<span class="badge low">${t('pri_low')}</span>` : '',
+    tk.tag ? `<span class="tag-chip">#${esc(tk.tag)}</span>` : '',
+    subs.length ? `<span class="tag-chip">☑ ${subs.filter(s => s.done).length}/${subs.length}</span>` : '',
+    tk.notify === false ? '<span class="mute-mark">🔕</span>' : (tk.notifyAt ? `<span class="mute-mark">🔔${tk.notifyAt}</span>` : '')
+  ].join('');
+  return `<div class="task-item ${tk.done ? 'done' : ''}" onclick="taskRowTap(event,'${tk.id}')">
+    <input type="checkbox" ${tk.done ? 'checked' : ''} onchange="toggleTask('${tk.id}')" aria-label="${esc(tk.title)}">
+    <div class="task-main">
+      <div class="task-title">${esc(tk.title)}</div>
+      ${meta ? `<div class="task-meta">${meta}</div>` : ''}
+    </div>
+    ${dueTimeStr(tk) ? `<div class="task-due-col ${late ? 'overdue' : ''}">
+      <span class="task-due">${dueTimeStr(tk)}</span>
+      ${tk.due && !tk.done ? `<span class="task-rel">${t('rel')(n)}</span>` : ''}
+    </div>` : ''}
+    ${!dashTap ? `<button class="small edit" aria-label="${t('sub_ph')}" onclick="showSubForm('${tk.id}')">＋</button>
+    <button class="small" aria-label="${t('del_label')}" onclick="delTask('${tk.id}')">✕</button>` : ''}
   </div>`;
 }
 function renderTagFilter() {
@@ -598,10 +677,9 @@ function renderTasks() {
   const q = (document.getElementById('task-search').value || '').toLowerCase();
   const tagF = document.getElementById('task-tag-filter').value;
   const match = tk => (!q || tk.title.toLowerCase().includes(q) || (tk.tag||'').toLowerCase().includes(q)) && (!tagF || tk.tag === tagF);
-  const sortFn = (a, b) => ((a.due || '9999') + (a.time || '99')) < ((b.due || '9999') + (b.time || '99')) ? -1 : 1;
-  const open = tasks.filter(t => !t.done && match(t)).sort(sortFn);
+  const open = tasks.filter(t => !t.done && match(t));
   const done = tasks.filter(t => t.done && match(t)).sort((a,b) => (b.doneAt||0) - (a.doneAt||0));
-  document.getElementById('task-list-open').innerHTML = open.length ? open.map(tk => taskHTML(tk) + subsBlockHTML(tk)).join('') : `<div class="empty">${t('empty_open')}</div>`;
+  document.getElementById('task-list-open').innerHTML = open.length ? bucketsHTML(open, tk => taskHTML(tk) + subsBlockHTML(tk)) : `<div class="empty">${t('empty_open')}</div>`;
   document.getElementById('task-list-done').innerHTML = done.length ? done.map(tk => taskHTML(tk) + subsBlockHTML(tk)).join('') : `<div class="empty">${t('empty_done')}</div>`;
 }
 
@@ -1343,6 +1421,7 @@ function toggleHabitDay(id, ds) {
   if (i === -1) h.dates.push(ds); else h.dates.splice(i, 1);
   store.save('habits', habits);
   renderHabits();
+  renderDash();
 }
 function habitRowTap(ev, id) {
   if (ev.target.closest('button') || ev.target.closest('input')) return;
@@ -1401,55 +1480,46 @@ function renderMoodPicker() {
   document.getElementById('mood-picker').innerHTML = MOODS.map(m =>
     `<button class="${m === selectedMood ? 'sel' : ''}" onclick="pickMood('${m}')">${m}</button>`).join('');
 }
-function pickMood(m) { selectedMood = m; renderMoodPicker(); }
+function pickMood(m) { selectedMood = m; renderMoodPicker(); if (diary.some(d => d.date === selectedDiaryDate)) diaryDirty = true; }
 
+// The editor sits under the calendar and always shows the selected day:
+// tap a day -> its entry (or an empty page) opens right there for writing or editing.
+let dCalYear, dCalMonth, selectedDiaryDate = todayStr(), diaryDirty = false;
+{ const n = new Date(); dCalYear = n.getFullYear(); dCalMonth = n.getMonth(); }
+function loadDiaryEditor() {
+  const entry = diary.find(d => d.date === selectedDiaryDate);
+  document.getElementById('diary-text').value = entry ? entry.text : '';
+  selectedMood = entry ? entry.mood : MOODS[0];
+  renderMoodPicker();
+  diaryDirty = false;
+  document.getElementById('diary-saved').textContent = '';
+}
 function saveDiary() {
-  const date = document.getElementById('diary-date').value || todayStr();
+  const date = selectedDiaryDate || todayStr();
   const text = document.getElementById('diary-text').value.trim();
-  if (!text) return;
   const existing = diary.find(d => d.date === date);
-  if (existing && existing.text !== text && diaryEditing !== date) {
-    if (confirm(t('diary_exists')(fmtDateFull(date)))) {
-      existing.text = existing.text + '\n\n' + text;
-      existing.mood = selectedMood;
-    } else if (confirm(t('diary_replace'))) {
-      existing.text = text;
-      existing.mood = selectedMood;
-    } else return;
-  } else if (existing) { existing.text = text; existing.mood = selectedMood; }
+  if (!text) { if (existing) delDiary(date); return; }
+  if (existing) { existing.text = text; existing.mood = selectedMood; }
   else diary.push({ date, mood: selectedMood, text });
-  diaryEditing = null;
-  document.getElementById('diary-text').value = '';
   store.save('diary', diary);
-  selectedDiaryDate = date;
+  diaryDirty = false;
   renderDiary();
+  document.getElementById('diary-saved').textContent = t('diary_saved');
 }
 function delDiary(date) {
   const idx = diary.findIndex(d => d.date === date);
   if (idx === -1) return;
   const [entry] = diary.splice(idx, 1);
   store.save('diary', diary);
+  if (date === selectedDiaryDate) loadDiaryEditor();
   renderDiary();
   offerUndo(fmtDateFull(date), () => {
     if (diary.some(d => d.date === date)) return;
     diary.splice(Math.min(idx, diary.length), 0, entry);
     store.save('diary', diary);
+    if (date === selectedDiaryDate) loadDiaryEditor();
   });
 }
-let diaryEditing = null; // date whose entry was loaded via "Edit" (saving it replaces without asking)
-function editDiary(date) {
-  const d = diary.find(d => d.date === date);
-  if (!d) return;
-  diaryEditing = date;
-  document.getElementById('diary-date').value = d.date;
-  selectedMood = d.mood;
-  renderMoodPicker();
-  document.getElementById('diary-text').value = d.text;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-let dCalYear, dCalMonth, selectedDiaryDate = null;
-{ const n = new Date(); dCalYear = n.getFullYear(); dCalMonth = n.getMonth(); }
 function dCalMove(d) {
   dCalMonth += d;
   if (dCalMonth < 0) { dCalMonth = 11; dCalYear--; }
@@ -1463,9 +1533,15 @@ function dCalToday() {
   selectDiaryDay(todayStr());
 }
 function selectDiaryDay(ds) {
+  if (diaryDirty && ds !== selectedDiaryDate) saveDiary(); // don't lose what was being typed
   selectedDiaryDate = ds;
-  if (!diary.find(d => d.date === ds)) document.getElementById('diary-date').value = ds;
+  const d = strToDate(ds);
+  dCalYear = d.getFullYear();
+  dCalMonth = d.getMonth();
+  loadDiaryEditor();
   renderDiary();
+  const ed = document.getElementById('diary-editor');
+  if (ed && document.getElementById('view-diary').classList.contains('active')) ed.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function renderDiary() {
   document.getElementById('dcal-title').textContent = t('calTitle')(dCalYear, dCalMonth);
@@ -1477,20 +1553,14 @@ function renderDiary() {
       ${entry ? `<div class="mood-big">${entry.mood}</div>` : ''}
     </div>`;
   });
-
-  const sel = selectedDiaryDate ? diary.find(d => d.date === selectedDiaryDate) : null;
-  document.getElementById('diary-selected').innerHTML = sel ? `
-    <div class="diary-entry-view">
-      <div class="diary-date">
-        <span><span class="mood">${sel.mood}</span>${fmtDateFull(sel.date)}</span>
-        <span>
-          <button class="small edit" onclick="editDiary('${sel.date}')">${t('edit')}</button>
-          <button class="small" aria-label="${t('del_label')}" onclick="delDiary('${sel.date}')">✕</button>
-        </span>
-      </div>
-      <div class="diary-text">${esc(sel.text)}</div>
-    </div>` : (selectedDiaryDate ? `<div class="empty">${t('no_entry')(fmtDateFull(selectedDiaryDate))}</div>` : '');
+  document.getElementById('diary-editor-title').textContent = t('diary_for')(fmtDateFull(selectedDiaryDate));
+  document.getElementById('btn-diary-del').style.visibility = diary.some(d => d.date === selectedDiaryDate) ? '' : 'hidden';
+  if (!diaryDirty) loadDiaryEditor(); // e.g. the entry changed on another device
 }
+document.getElementById('diary-text').addEventListener('input', () => {
+  diaryDirty = true;
+  document.getElementById('diary-saved').textContent = '';
+});
 
 // ---------- Stats ----------
 let statsHabitRange = 7, statsHabitOffset = 0;
@@ -1577,6 +1647,67 @@ function toggleLater() {
 function eventItemHTML(e) {
   return `<div class="task-item" onclick="goEvent('${e.date}')"><span class="ev-dot inline" style="background:${e.color || EV_COLORS[0]}"></span><span class="task-title">${e.rec ? '🔁 ' : ''}${timeStr(e) ? '🕐 ' + timeStr(e) + ' ' : ''}${esc(e.title)}</span></div>`;
 }
+const nowHM = () => { const n = new Date(); return String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); };
+// "What to do next": past-due task, an event starting within the hour, today's task,
+// then the next event today, then the nearest deadline.
+function heroPick() {
+  const today = todayStr(), hm = nowHM();
+  const open = tasks.filter(tk => !tk.done).sort(sortByDue);
+  const overdue = open.filter(tk => tk.due && tk.due < today);
+  const dueToday = open.filter(tk => tk.due === today);
+  const evs = eventsOn(today).filter(e => e.time && (e.timeEnd || e.time) >= hm).sort((a, b) => a.time < b.time ? -1 : 1);
+  const soonEv = evs.find(e => {
+    const [H, M] = e.time.split(':').map(Number);
+    const mins = H * 60 + M - (new Date().getHours() * 60 + new Date().getMinutes());
+    return mins <= 60;
+  });
+  if (overdue.length) return { kind: 'overdue', task: overdue[0], more: 0 };
+  if (soonEv) return { kind: 'event', ev: soonEv };
+  if (dueToday.length) return { kind: 'today', task: dueToday[0], more: dueToday.length - 1 };
+  if (evs.length) return { kind: 'event', ev: evs[0] };
+  const next = open.find(tk => tk.due);
+  return next ? { kind: 'next', task: next, none: true } : { kind: 'none' };
+}
+function renderHero() {
+  const h = heroPick();
+  const el = document.getElementById('dash-hero');
+  if (h.task) {
+    const tk = h.task;
+    const meta = [tk.tag ? '#' + esc(tk.tag) : '', dueTimeStr(tk), t('rel')(daysUntil(tk.due))].filter(Boolean).join(' · ');
+    el.className = 'hero ' + (h.kind === 'next' ? 'calm' : h.kind);
+    el.innerHTML = `${h.none ? `<div class="hero-none">${t('hero_none')}</div>` : ''}
+      <div class="hero-label">${t('hero_' + h.kind)}</div>
+      <div class="hero-title">${esc(tk.title)}</div>
+      <div class="hero-meta">${meta}</div>
+      <div class="hero-actions">
+        <button class="hero-btn" onclick="toggleTask('${tk.id}')">✓ ${t('hero_done')}</button>
+        <button class="hero-link" onclick="editTask('${tk.id}')">${t('edit')}</button>
+      </div>
+      ${h.more ? `<div class="hero-more">${t('hero_more')(h.more)}</div>` : ''}`;
+  } else if (h.ev) {
+    const e = h.ev;
+    el.className = 'hero event';
+    el.innerHTML = `<div class="hero-label">${t('hero_event')}</div>
+      <div class="hero-title">${e.rec ? '🔁 ' : ''}${esc(e.title)}</div>
+      <div class="hero-meta">🕐 ${timeStr(e)}</div>
+      <div class="hero-actions"><button class="hero-btn" onclick="goEvent('${e.date}')">${t('hero_open')}</button></div>`;
+  } else {
+    el.className = 'hero calm';
+    el.innerHTML = `<div class="hero-title">${t('hero_none')}</div><div class="hero-meta">${t('hero_none_sub')}</div>`;
+  }
+}
+function renderDashHabits() {
+  const card = document.getElementById('dash-habits-card');
+  card.style.display = habits.length ? '' : 'none';
+  const today = todayStr();
+  document.getElementById('dash-habits').innerHTML = habits.map(h => {
+    const on = h.dates.includes(today);
+    const st = habitStreak(h);
+    return `<button class="habit-chip ${on ? 'on' : ''}" aria-pressed="${on}" onclick="toggleHabitDay('${h.id}','${today}')">
+      <span class="hc-check">${on ? '✓' : ''}</span><span class="hc-name">${esc(h.name)}</span>${st ? `<span class="hc-streak">🔥${st}</span>` : ''}
+    </button>`;
+  }).join('');
+}
 function renderDash() {
   const today = todayStr();
   const week = new Date();
@@ -1584,8 +1715,20 @@ function renderDash() {
   const weekStr = dateToStr(week);
 
   const open = tasks.filter(t => !t.done);
-  document.getElementById('dash-today-count').textContent = open.filter(t => t.due === today).length;
-  document.getElementById('dash-open-count').textContent = open.length;
+  document.getElementById('dash-date').textContent = t('dateHead')(today);
+  document.getElementById('dash-sum').textContent = t('sum')(open.length, eventsOn(today).length);
+  renderHero();
+  renderQuickDue();
+  renderDashHabits();
+
+  // Tasks due within a week, grouped; later / undated ones are just counted.
+  const near = ['overdue', 'today', 'soon', 'week'];
+  const nearHTML = bucketsHTML(open, tk => taskHTML(tk, true), near);
+  const nLater = open.filter(tk => bucketOf(tk) === 'later').length;
+  const nNone = open.filter(tk => bucketOf(tk) === 'none').length;
+  document.getElementById('dash-buckets').innerHTML =
+    (nearHTML || `<div class="empty">${t('empty_due')}</div>`) +
+    `<div class="more-link"><button class="ghost" onclick="showView('tasks')">${(nLater || nNone) ? t('more_tasks')(nLater, nNone) : t('all_tasks')}</button></div>`;
 
   let weekHTML = '';
   const d = new Date();
@@ -1611,22 +1754,10 @@ function renderDash() {
   document.getElementById('btn-later').style.display = laterEvents.length ? '' : 'none';
   document.getElementById('btn-later').textContent = showLater ? t('hide_later') : t('show_later');
   if (!laterEvents.length) { showLater = false; document.getElementById('dash-events-later').style.display = 'none'; }
-
-  const important = open.filter(t => t.pri === 'high').sort((a,b) => ((a.due||'9999')+(a.time||'99')) < ((b.due||'9999')+(b.time||'99')) ? -1 : 1).slice(0, 5);
-  document.getElementById('dash-important').innerHTML = important.length
-    ? important.map(tk => taskHTML(tk, true)).join('')
-    : `<div class="empty">${t('empty_important')}</div>`;
-
-  const upcoming = open.filter(t => t.due).sort((a,b) => ((a.due)+(a.time||'')) < ((b.due)+(b.time||'')) ? -1 : 1).slice(0, 5);
-  document.getElementById('dash-tasks').innerHTML = upcoming.length
-    ? upcoming.map(tk => taskHTML(tk, true)).join('')
-    : `<div class="empty">${t('empty_due')}</div>`;
-
-  const recentDone = tasks.filter(t => t.done).sort((a,b) => (b.doneAt||0) - (a.doneAt||0)).slice(0, 5);
-  document.getElementById('dash-done').innerHTML = recentDone.length
-    ? recentDone.map(tk => taskHTML(tk, true)).join('')
-    : `<div class="empty">${t('empty_done')}</div>`;
 }
+// Keep "now" up to date (hero, relative days) while the app stays open.
+setInterval(() => { if (!document.hidden && document.getElementById('view-dash').classList.contains('active')) renderDash(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) renderAll(); });
 
 // ---------- Notifications ----------
 let notifEnabled = localStorage.getItem('planner_notif') === '1';
@@ -1749,7 +1880,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 function renderAll() {
   renderTasks(); renderCal(); renderProj(); renderHabits(); renderDiary(); renderDash(); renderStats();
 }
-document.getElementById('diary-date').value = todayStr();
 document.getElementById('pomo-work-min').value = pomoCfg.work;
 document.getElementById('pomo-break-min').value = pomoCfg.brk;
 applyTheme();
@@ -1757,6 +1887,7 @@ pomoRestore();
 renderColorSwatches();
 updateRepeatUI();
 applyI18n();
+renderDueChips();
 renderMoodPicker();
 renderAll();
 initFirebase();
