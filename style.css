@@ -647,3 +647,31 @@ html.dark .saved-note { color: #a3c78f; }
   .ev-time { display: none; }
   .cal-task-dot { font-size: 9.5px; }
 }
+
+/* ===== Task sheet ===== */
+.sheet { max-width: 480px; }
+.sheet-grip { display: none; }
+.ts-title {
+  width: 100%; border: none; background: transparent; resize: none; overflow: hidden;
+  font-size: 19px; font-weight: 700; padding: 4px 2px; line-height: 1.4; color: var(--ink);
+}
+.ts-title:focus { outline: none; border-bottom: 2px solid var(--accent); }
+.ts-label { font-size: 12px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; letter-spacing: .5px; }
+.sheet .due-row { margin-top: 0; }
+.ts-done-btn {
+  border: 1.5px solid var(--border); background: transparent; border-radius: 99px; padding: 8px 16px;
+  font-size: 14px; font-weight: 700; font-family: inherit; color: var(--text); cursor: pointer; min-height: 40px;
+}
+.ts-done-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.ghost.danger { color: #b3543f; border-color: #e5c7bd; }
+html.dark button.ghost.danger { color: #e8a394; border-color: #4a2b24; }
+@media (max-width: 640px) {
+  .sheet-bg.open { align-items: flex-end; }
+  .modal.sheet {
+    width: 100%; max-width: none; max-height: 88vh; border-radius: 18px 18px 0 0;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+    animation: sheetup .2s ease-out;
+  }
+  .sheet-grip { display: block; width: 40px; height: 4px; border-radius: 99px; background: var(--border); margin: 0 auto 10px; }
+}
+@keyframes sheetup { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }

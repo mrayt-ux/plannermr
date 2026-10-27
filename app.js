@@ -59,7 +59,7 @@ const I18N = {
     del_one: 'This day only', del_after: 'This & later',
     repeat_none: 'No repeat', repeat_daily: 'Daily', repeat_weekly_opt: 'Weekly', repeat_monthly: 'Monthly', repeat_until: 'Until',
     del_label: 'Delete', prev: 'Previous', next: 'Next',
-    nav_tasks_short: 'Tasks', quick_ph: 'Add a task…', today_habits: "Today's Habits", data_title: 'Data & Sync',
+    nav_tasks_short: 'Tasks', due_label: 'Due', subtasks_label: 'Subtasks', mark_done: '○ Mark done', mark_undone: '✓ Done — tap to undo', quick_ph: 'Add a task…', today_habits: "Today's Habits", data_title: 'Data & Sync',
     more_opts: 'More options (tag, time, priority, reminder)',
     due_today: 'Today', due_tomorrow: 'Tomorrow', due_week: 'This week', due_next: 'Next week', due_none: 'No date',
     b_overdue: 'Overdue', b_today: 'Today', b_soon: 'Within 3 days', b_week: 'Within 7 days', b_later: 'Later', b_none: 'No due date',
@@ -131,7 +131,7 @@ const I18N = {
     del_one: 'この日だけ削除', del_after: 'この日以降を削除',
     repeat_none: '繰り返さない', repeat_daily: '毎日', repeat_weekly_opt: '毎週', repeat_monthly: '毎月', repeat_until: '終了日',
     del_label: '削除', prev: '前へ', next: '次へ',
-    nav_tasks_short: 'タスク', quick_ph: 'タスクを追加…', today_habits: '今日の習慣', data_title: 'データ・同期',
+    nav_tasks_short: 'タスク', due_label: '期限', subtasks_label: 'サブタスク', mark_done: '○ 完了にする', mark_undone: '✓ 完了済み(タップで戻す)', quick_ph: 'タスクを追加…', today_habits: '今日の習慣', data_title: 'データ・同期',
     more_opts: '詳細(タグ・時刻・優先度・通知)',
     due_today: '今日', due_tomorrow: '明日', due_week: '今週中', due_next: '来週', due_none: '期限なし',
     b_overdue: '期限超過', b_today: '今日', b_soon: '3日以内', b_week: '7日以内', b_later: 'それ以降', b_none: '期限なし',
@@ -643,7 +643,113 @@ const timeStr = tk => tk.time ? (tk.time + (tk.timeEnd ? '–' + tk.timeEnd : ''
 const dueTimeStr = tk => tk.due ? fmtDate(tk.due) + (timeStr(tk) ? ' ' + timeStr(tk) : '') : timeStr(tk);
 function taskRowTap(ev, id) {
   if (ev.target.closest('button') || ev.target.closest('input')) return;
-  editTask(id);
+  openTaskSheet(id);
+}
+
+// ---------- Task sheet (opens over the current screen) ----------
+let sheetTaskId = null;
+const sheetTask = () => tasks.find(x => x.id === sheetTaskId);
+function openTaskSheet(id) {
+  const tk = tasks.find(x => x.id === id);
+  if (!tk) return;
+  sheetTaskId = id;
+  document.getElementById('ts-title').value = tk.title;
+  document.getElementById('ts-due').value = tk.due || '';
+  document.getElementById('ts-tag').value = tk.tag || '';
+  document.getElementById('ts-time').value = tk.time || '';
+  document.getElementById('ts-time-end').value = tk.timeEnd || '';
+  document.getElementById('ts-pri').value = tk.pri || 'mid';
+  document.getElementById('ts-notify').checked = tk.notify !== false;
+  document.getElementById('ts-notify-at').value = tk.notifyAt || '';
+  document.getElementById('ts-more').open = !!(tk.tag || tk.time || (tk.pri && tk.pri !== 'mid') || tk.notify === false || tk.notifyAt);
+  document.getElementById('ts-sub-input').value = '';
+  renderSheet();
+  document.getElementById('task-sheet-bg').classList.add('open');
+  fitSheetTitle();
+}
+function renderSheet() {
+  const tk = sheetTask();
+  if (!tk) return;
+  const btn = document.getElementById('ts-done');
+  btn.textContent = tk.done ? t('mark_undone') : t('mark_done');
+  btn.classList.toggle('on', !!tk.done);
+  renderSheetDueChips();
+  document.getElementById('ts-subs').innerHTML = (tk.subs || []).map(sb => `<div class="sub-item ${sb.done ? 'done' : ''}" style="padding-left:4px;">
+    <input type="checkbox" ${sb.done ? 'checked' : ''} onchange="sheetToggleSub('${sb.id}')" aria-label="${esc(sb.title)}">
+    <span class="sub-title">${esc(sb.title)}</span>
+    <button class="small" aria-label="${t('del_label')}" onclick="sheetDelSub('${sb.id}')">✕</button>
+  </div>`).join('');
+}
+function fitSheetTitle() {
+  const el = document.getElementById('ts-title');
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+document.getElementById('ts-title').addEventListener('input', fitSheetTitle);
+function setSheetDue(v) { document.getElementById('ts-due').value = v; renderSheetDueChips(); }
+function renderSheetDueChips() {
+  document.getElementById('ts-due-chips').innerHTML = dueChipsHTML(document.getElementById('ts-due').value, 'setSheetDue');
+}
+function saveTaskSheet() {
+  const tk = sheetTask();
+  if (!tk) return closeTaskSheet();
+  const title = document.getElementById('ts-title').value.trim();
+  Object.assign(tk, {
+    title: title || tk.title,
+    due: document.getElementById('ts-due').value,
+    tag: document.getElementById('ts-tag').value.trim(),
+    time: document.getElementById('ts-time').value,
+    timeEnd: document.getElementById('ts-time-end').value,
+    pri: document.getElementById('ts-pri').value,
+    notify: document.getElementById('ts-notify').checked,
+    notifyAt: document.getElementById('ts-notify-at').value
+  });
+  store.save('tasks', tasks);
+  closeTaskSheet();
+  renderAll();
+}
+function closeTaskSheet() {
+  document.getElementById('task-sheet-bg').classList.remove('open');
+  sheetTaskId = null;
+}
+function sheetToggleDone() {
+  const id = sheetTaskId;
+  closeTaskSheet();
+  toggleTask(id);
+}
+function sheetDelete() {
+  const id = sheetTaskId;
+  closeTaskSheet();
+  delTask(id);
+}
+function sheetAddSub() {
+  const tk = sheetTask();
+  const input = document.getElementById('ts-sub-input');
+  const title = input.value.trim();
+  if (!tk || !title) return;
+  (tk.subs = tk.subs || []).push({ id: uid(), title, done: false });
+  input.value = '';
+  store.save('tasks', tasks);
+  renderSheet();
+  renderAll();
+  input.focus();
+}
+function sheetToggleSub(subId) {
+  const tk = sheetTask();
+  const sb = tk && (tk.subs || []).find(x => x.id === subId);
+  if (!sb) return;
+  sb.done = !sb.done;
+  store.save('tasks', tasks);
+  renderSheet();
+  renderAll();
+}
+function sheetDelSub(subId) {
+  const tk = sheetTask();
+  if (!tk) return;
+  tk.subs = (tk.subs || []).filter(x => x.id !== subId);
+  store.save('tasks', tasks);
+  renderSheet();
+  renderAll();
 }
 function taskHTML(tk, dashTap) {
   const n = tk.due ? daysUntil(tk.due) : null;
@@ -1194,7 +1300,7 @@ function modalEvTap(ev, id, rec) {
 function modalTaskTap(ev, id) {
   if (ev.target.closest('button')) return;
   closeModal();
-  editTask(id);
+  openTaskSheet(id);
 }
 function editEvent(id, rec) {
   const list = rec ? recurring : events;
@@ -1690,7 +1796,7 @@ function renderHero() {
       <div class="hero-meta">${meta}</div>
       <div class="hero-actions">
         <button class="hero-btn" onclick="toggleTask('${tk.id}')">✓ ${t('hero_done')}</button>
-        <button class="hero-link" onclick="editTask('${tk.id}')">${t('edit')}</button>
+        <button class="hero-link" onclick="openTaskSheet('${tk.id}')">${t('edit')}</button>
       </div>
       ${h.more ? `<div class="hero-more">${t('hero_more')(h.more)}</div>` : ''}`;
   } else if (h.ev) {
@@ -1884,7 +1990,8 @@ function checkReminders() {
 setInterval(checkReminders, 20000);
 // Keyboard: Esc closes the day modal; Enter/Space on a focused row or calendar cell acts like a tap.
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('modal-bg').classList.contains('open')) closeModal();
+  if (e.key === 'Escape' && document.getElementById('task-sheet-bg').classList.contains('open')) closeTaskSheet();
+  else if (e.key === 'Escape' && document.getElementById('modal-bg').classList.contains('open')) closeModal();
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.task-item, .habit-item, .cal-cell, .modal-event-item, .mood-week-day')) {
     e.preventDefault();

@@ -325,6 +325,51 @@
   </div>
 </div>
 
+<!-- Task sheet: view / edit one task without leaving the current screen -->
+<div class="modal-bg sheet-bg" id="task-sheet-bg" onclick="if(event.target===this)closeTaskSheet()">
+  <div class="modal sheet" role="dialog" aria-modal="true" aria-labelledby="ts-title">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="modal-head">
+      <button class="ts-done-btn" id="ts-done" onclick="sheetToggleDone()"></button>
+      <button class="icon-btn modal-x" onclick="closeTaskSheet()" data-i18n-aria="close">✕</button>
+    </div>
+    <textarea id="ts-title" class="ts-title" rows="1" maxlength="200" data-i18n-aria="task_name_ph"></textarea>
+    <div class="ts-label" data-i18n="due_label"></div>
+    <div class="due-row">
+      <div class="due-chips" id="ts-due-chips"></div>
+      <input type="date" id="ts-due" onchange="renderSheetDueChips()" aria-label="due">
+    </div>
+    <div class="ts-label" data-i18n="subtasks_label"></div>
+    <div id="ts-subs"></div>
+    <div class="sub-form" style="margin-left:0;">
+      <input type="text" id="ts-sub-input" data-i18n-ph="sub_ph" onkeydown="if(event.key==='Enter')sheetAddSub()">
+      <button class="ghost" onclick="sheetAddSub()" data-i18n="add"></button>
+    </div>
+    <details class="more" id="ts-more">
+      <summary data-i18n="more_opts"></summary>
+      <div class="task-form" style="margin-top:10px;">
+        <input type="text" id="ts-tag" data-i18n-ph="tag_ph" style="flex:0 1 130px; min-width:90px;">
+        <span class="time-range">
+          <input type="time" id="ts-time" aria-label="start">
+          <span>–</span>
+          <input type="time" id="ts-time-end" aria-label="end">
+        </span>
+        <select id="ts-pri">
+          <option value="mid" data-i18n="priority_mid"></option>
+          <option value="high" data-i18n="priority_high"></option>
+          <option value="low" data-i18n="priority_low"></option>
+        </select>
+        <label class="notify-label"><input type="checkbox" id="ts-notify"><span data-i18n="notify_this"></span></label>
+        <input type="time" id="ts-notify-at" style="font-size:12px; padding:5px 7px;" aria-label="notify at">
+      </div>
+    </details>
+    <div class="form-actions" style="justify-content:space-between; margin-top:16px;">
+      <button class="ghost danger" onclick="sheetDelete()" data-i18n="del_label"></button>
+      <button class="primary" onclick="saveTaskSheet()" data-i18n="save"></button>
+    </div>
+  </div>
+</div>
+
 <!-- Undo toast -->
 <div id="toast">
   <span id="toast-msg"></span>
