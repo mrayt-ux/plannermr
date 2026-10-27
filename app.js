@@ -68,7 +68,7 @@ const I18N = {
     all_tasks: 'All tasks →',
     hero_overdue: 'Past due', hero_today: 'Due today', hero_event: 'Coming up', hero_next: 'Next deadline',
     hero_none: 'Nothing due today 🎉', hero_none_sub: 'Add a task below, or enjoy the free time.',
-    hero_done: 'Mark done', hero_open: 'Open', hero_more: n => `+${n} more due today`,
+    hero_done: 'Mark done', hero_open: 'Open', hero_edit: 'Edit event', hero_now: 'Happening now', hero_in: m => m >= 60 ? `in ${Math.floor(m/60)}h ${m%60}m` : `in ${m} min`, hero_then: 'Next task', hero_more: n => `+${n} more due today`,
     completed: s => `Completed "${s}"`,
     sum: (o, e) => `${o} open task${o === 1 ? '' : 's'} · ${e} event${e === 1 ? '' : 's'} today`,
     dateHead: s => I18N.en.fmtDateFull(s),
@@ -140,7 +140,7 @@ const I18N = {
     all_tasks: 'すべてのタスク →',
     hero_overdue: '期限が過ぎています', hero_today: '今日が締切', hero_event: 'もうすぐの予定', hero_next: '次の締切',
     hero_none: '今日が締切のものはありません 🎉', hero_none_sub: '下の欄からタスクを追加できます。',
-    hero_done: '完了にする', hero_open: '開く', hero_more: n => `今日締切がほかに ${n} 件`,
+    hero_done: '完了にする', hero_open: '開く', hero_edit: '予定を編集', hero_now: '開催中', hero_in: m => m >= 60 ? `あと${Math.floor(m/60)}時間${m%60 ? m%60 + '分' : ''}` : `あと${m}分`, hero_then: '次のタスク', hero_more: n => `今日締切がほかに ${n} 件`,
     completed: s => `「${s}」を完了しました`,
     sum: (o, e) => `未完了 ${o} 件・今日の予定 ${e} 件`,
     dateHead: s => { const [y,m,d] = s.split('-').map(Number); return `${m}月${d}日(${I18N.ja.dows[new Date(y,m-1,d).getDay()]})`; },
@@ -407,6 +407,10 @@ function showView(v) {
   window.scrollTo({ top: 0 });
 }
 document.querySelectorAll('nav button').forEach(btn => { btn.onclick = () => showView(btn.dataset.view); });
+function goEditEvent(ds, id, rec) {
+  goEvent(ds);
+  editEvent(id, rec);
+}
 function goEvent(ds) {
   const d = strToDate(ds);
   calYear = d.getFullYear();
@@ -1662,9 +1666,10 @@ function heroPick() {
     return mins <= 60;
   });
   if (overdue.length) return { kind: 'overdue', task: overdue[0], more: 0 };
-  if (soonEv) return { kind: 'event', ev: soonEv };
+  const nextTask = dueToday[0] || open.find(tk => tk.due) || null;
+  if (soonEv) return { kind: 'event', ev: soonEv, then: nextTask };
   if (dueToday.length) return { kind: 'today', task: dueToday[0], more: dueToday.length - 1 };
-  if (evs.length) return { kind: 'event', ev: evs[0] };
+  if (evs.length) return { kind: 'event', ev: evs[0], then: nextTask };
   const next = open.find(tk => tk.due);
   return next ? { kind: 'next', task: next, none: true } : { kind: 'none' };
 }
@@ -1686,11 +1691,22 @@ function renderHero() {
       ${h.more ? `<div class="hero-more">${t('hero_more')(h.more)}</div>` : ''}`;
   } else if (h.ev) {
     const e = h.ev;
+    const [H, M] = e.time.split(':').map(Number);
+    const now = new Date();
+    const mins = H * 60 + M - (now.getHours() * 60 + now.getMinutes());
+    const when = mins <= 0 ? t('hero_now') : t('hero_in')(mins);
+    const tk = h.then;
     el.className = 'hero event';
-    el.innerHTML = `<div class="hero-label">${t('hero_event')}</div>
+    el.innerHTML = `<div class="hero-label">${t('hero_event')} · ${when}</div>
       <div class="hero-title">${e.rec ? '🔁 ' : ''}${esc(e.title)}</div>
-      <div class="hero-meta">🕐 ${timeStr(e)}</div>
-      <div class="hero-actions"><button class="hero-btn" onclick="goEvent('${e.date}')">${t('hero_open')}</button></div>`;
+      <div class="hero-meta">🕐 ${timeStr(e)}${e.notify === false ? ' · 🔕' : ''}</div>
+      <div class="hero-actions"><button class="hero-btn" onclick="goEditEvent('${e.date}','${e.id}',${!!e.rec})">${t('hero_edit')}</button></div>
+      ${tk ? `<div class="hero-then">
+        <span class="hero-then-label">${t('hero_then')}</span>
+        <span class="hero-then-title">${esc(tk.title)}</span>
+        <span class="hero-then-due">${t('rel')(daysUntil(tk.due))}</span>
+        <button class="hero-then-btn" onclick="toggleTask('${tk.id}')" aria-label="${t('hero_done')}">✓</button>
+      </div>` : ''}`;
   } else {
     el.className = 'hero calm';
     el.innerHTML = `<div class="hero-title">${t('hero_none')}</div><div class="hero-meta">${t('hero_none_sub')}</div>`;
@@ -1725,9 +1741,11 @@ function renderDash() {
   const near = ['overdue', 'today', 'soon', 'week'];
   const nearHTML = bucketsHTML(open, tk => taskHTML(tk, true), near);
   const nLater = open.filter(tk => bucketOf(tk) === 'later').length;
-  const nNone = open.filter(tk => bucketOf(tk) === 'none').length;
+  const undated = open.filter(tk => bucketOf(tk) === 'none');
+  const undatedHTML = undated.length ? `<div class="bucket-head none">${t('b_none')}<span>${undated.length}</span></div>` + undated.slice(0, 3).map(tk => taskHTML(tk, true)).join('') : '';
+  const nNone = Math.max(0, undated.length - 3);
   document.getElementById('dash-buckets').innerHTML =
-    (nearHTML || `<div class="empty">${t('empty_due')}</div>`) +
+    ((nearHTML + undatedHTML) || `<div class="empty">${t('empty_open')}</div>`) +
     `<div class="more-link"><button class="ghost" onclick="showView('tasks')">${(nLater || nNone) ? t('more_tasks')(nLater, nNone) : t('all_tasks')}</button></div>`;
 
   let weekHTML = '';
