@@ -628,3 +628,22 @@ html.dark .saved-note { color: #a3c78f; }
   color: inherit; font-size: 15px; cursor: pointer; flex-shrink: 0; font-family: inherit;
 }
 .hero-then-btn:hover { background: rgba(255, 255, 255, .15); }
+
+/* Event names inside calendar cells: tinted pill in the event's color, cut off when too long */
+.ev-label {
+  font-size: 10.5px; line-height: 1.35; margin-top: 3px; padding: 1px 4px 1px 5px;
+  border-left: 3px solid var(--ev); border-radius: 3px;
+  background: color-mix(in srgb, var(--ev) 16%, transparent);
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;
+}
+.ev-label.rec { border-left-style: dotted; }
+.ev-time { font-weight: 500; color: var(--muted); margin-right: 3px; font-variant-numeric: tabular-nums; }
+.ev-more { font-size: 10px; color: var(--muted); font-weight: 700; margin-top: 2px; }
+#cal-grid .cal-cell { min-height: 86px; }
+@media (max-width: 640px) {
+  #cal-grid .cal-cell { min-height: 64px; padding: 3px 2px; }
+  #cal-grid .cal-cell .daynum { padding-left: 2px; }
+  .ev-label { font-size: 9.5px; padding: 1px 2px 1px 3px; border-left-width: 2px; text-overflow: clip; letter-spacing: -.2px; }
+  .ev-time { display: none; }
+  .cal-task-dot { font-size: 9.5px; }
+}

@@ -1,7 +1,7 @@
 // ---------- i18n ----------
 const I18N = {
   en: {
-    nav_home: 'Home', nav_tasks: 'Tasks & Goals', nav_cal: 'Calendar', nav_habits: 'Habits', nav_diary: 'Diary',
+    nav_home: 'Home', nav_tasks: 'Tasks', nav_cal: 'Calendar', nav_habits: 'Habits', nav_diary: 'Diary',
     stat_today: 'Tasks due today', stat_open: 'Open tasks',
     week_events: 'This Week', show_later: 'Show later events', hide_later: 'Hide later events',
     upcoming: 'Upcoming Tasks', recent_done: 'Recently Completed',
@@ -75,7 +75,7 @@ const I18N = {
     diary_for: d => `Diary — ${d}`, diary_saved: 'Saved ✓'
   },
   ja: {
-    nav_home: 'ホーム', nav_tasks: 'タスク・進捗', nav_cal: 'カレンダー', nav_habits: '習慣', nav_diary: '日記',
+    nav_home: 'ホーム', nav_tasks: 'タスク', nav_cal: 'カレンダー', nav_habits: '習慣', nav_diary: '日記',
     stat_today: '今日締切のタスク', stat_open: '未完了タスク',
     week_events: '1週間の予定', show_later: 'それ以降の予定を表示', hide_later: 'それ以降の予定を隠す',
     upcoming: '期限が近いタスク', recent_done: '最近完了したタスク',
@@ -1119,15 +1119,19 @@ function calGridHTML(year, month, cellFn) {
   }
   return html;
 }
+const phoneMq = window.matchMedia('(max-width: 640px)');
+phoneMq.addEventListener('change', () => renderCal());
 function renderCal() {
   document.getElementById('cal-title').textContent = t('calTitle')(calYear, calMonth);
   const today = todayStr();
+  const maxEv = phoneMq.matches ? 2 : 3; // how many event names fit in a day cell
   document.getElementById('cal-grid').innerHTML = calGridHTML(calYear, calMonth, (d, ds, other) => {
     const dayEvents = eventsOn(ds).sort((a,b) => (a.time||'') < (b.time||'') ? -1 : 1);
     const dayTasks = tasks.filter(t => t.due === ds && !t.done);
     return `<div class="cal-cell ${other ? 'other' : ''} ${ds === today ? 'today' : ''}" onclick="openModal('${ds}')">
       <span class="daynum">${d.getDate()}</span>
-      ${dayEvents.length ? `<div class="ev-dots">${dayEvents.slice(0, 6).map(e => `<span class="ev-dot${e.rec ? ' rec' : ''}" style="background:${e.color || EV_COLORS[0]}"></span>`).join('')}</div>` : ''}
+      ${dayEvents.slice(0, maxEv).map(e => `<div class="ev-label${e.rec ? ' rec' : ''}" style="--ev:${e.color || EV_COLORS[0]}">${e.time ? `<span class="ev-time">${e.time}</span>` : ''}${esc(e.title)}</div>`).join('')}
+      ${dayEvents.length > maxEv ? `<div class="ev-more">+${dayEvents.length - maxEv}</div>` : ''}
       ${dayTasks.length ? `<div class="cal-task-dot">📌${dayTasks.length}</div>` : ''}
     </div>`;
   });
